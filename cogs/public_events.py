@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 from collections import deque
@@ -18,6 +18,7 @@ from discord.ext import tasks
 
 from repositories.admin_repo import AdminRepo
 from repositories.chat_candy_repo import ChatCandyRepo
+from repositories.observer_archives_repo import ObserverArchivesRepo
 from repositories.public_events_repo import PublicEventsRepo
 from repositories.reward_ledger_repo import RewardSettlement
 from services.chat_candy_runtime import ChatCandyRuntimeService
@@ -25,14 +26,15 @@ from services.config_service import get_carousel_config, get_main_config, get_pu
 from services.public_event_runtime import PublicEventRuntimeService
 from services.audit_service import AuditService
 from services.event_runtime_service import EventRuntimeService
-from services.ghostface_question_catalog import GhostfaceQuestionCatalog
+from services.observer_archive_service import ObserverArchiveService
+from services.observer_question_catalog import ObserverQuestionCatalog
 from services.i18n_service import I18nService
 from services.inventory_service import InventoryService
 from services.mission_service import MissionService
 from services.public_event_texts import PublicEventTextsService
 from services.reward_settlement_service import RewardSettlementService
 from repositories.users_repo import UsersRepo
-from views.public_event_views import GhostfaceTranslateView, PublicEventTranslateView, ChatMessageBonusView
+from views.public_event_views import ObserverTranslateView, PublicEventTranslateView, ChatMessageBonusView
 from utils.event_config import get_achievements_config
 
 
@@ -41,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 HORROR_MOVIES_PATH = ROOT_DIR / "content" / "halloween" / "horror_movies.json"
 INVISIBLE_SPACE = "\u2060"
 SCHEDULER_TIMEZONE = timezone(timedelta(hours=-3), "America/Sao_Paulo")
-GHOSTFACE_CONFUSABLES = str.maketrans(
+OBSERVER_CONFUSABLES = str.maketrans(
     {
         "\u0410": "A",
         "\u0430": "a",
@@ -55,7 +57,7 @@ GHOSTFACE_CONFUSABLES = str.maketrans(
 )
 
 class PublicEventsCog(commands.Cog):
-    GHOSTFACE_COLOR = discord.Color.from_rgb(120, 12, 12)
+    OBSERVER_COLOR = discord.Color.from_rgb(120, 12, 12)
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -63,10 +65,12 @@ class PublicEventsCog(commands.Cog):
         self.audit_service = AuditService(bot, self.admin_repo)
         self.chat_candy_repo = ChatCandyRepo()
         self.public_events_repo = PublicEventsRepo()
+        self.observer_archives_repo = ObserverArchivesRepo()
         self.event_runtime_service = EventRuntimeService(self.admin_repo)
         self.chat_candy_runtime = ChatCandyRuntimeService()
         self.public_event_runtime = PublicEventRuntimeService()
-        self.ghostface_catalog = GhostfaceQuestionCatalog(ROOT_DIR)
+        self.observer_catalog = ObserverQuestionCatalog(ROOT_DIR)
+        self.observer_archive_service = ObserverArchiveService(ROOT_DIR)
         self.users_repo = UsersRepo()
         self.i18n = I18nService(self.users_repo)
         self.inventory_service = InventoryService(users_repo=self.users_repo, i18n_service=self.i18n)
@@ -77,8 +81,8 @@ class PublicEventsCog(commands.Cog):
             user_guild_metrics_repo=self.mission_service.user_guild_metrics_repo,
         )
         self.texts = PublicEventTextsService()
-        self._resolving_ghostface_guilds: set[int] = set()
-        self._ghostface_timeout_tasks: dict[int, asyncio.Task] = {}
+        self._resolving_observer_guilds: set[int] = set()
+        self._observer_timeout_tasks: dict[int, asyncio.Task] = {}
         self._finishing_spider_guilds: set[int] = set()
         self._spider_expire_tasks: dict[tuple[int, int], asyncio.Task] = {}
         self._spider_finish_tasks: dict[int, asyncio.Task] = {}
@@ -92,6 +96,7 @@ class PublicEventsCog(commands.Cog):
     async def cog_load(self) -> None:
         await self.chat_candy_repo.init_db()
         await self.public_events_repo.init_db()
+        await self.observer_archives_repo.init_db()
         await self._reset_public_events_on_boot()
         await self._restore_spider_finish_tasks()
         if not self.scheduler_loop.is_running():
@@ -100,10 +105,10 @@ class PublicEventsCog(commands.Cog):
     def cog_unload(self) -> None:
         if self.scheduler_loop.is_running():
             self.scheduler_loop.cancel()
-        for task in self._ghostface_timeout_tasks.values():
+        for task in self._observer_timeout_tasks.values():
             task.cancel()
-        self._ghostface_timeout_tasks.clear()
-        self._resolving_ghostface_guilds.clear()
+        self._observer_timeout_tasks.clear()
+        self._resolving_observer_guilds.clear()
         self._finishing_spider_guilds.clear()
         for task in self._spider_expire_tasks.values():
             task.cancel()
@@ -157,7 +162,8 @@ class PublicEventsCog(commands.Cog):
     def _display_event_name_localized(self, locale: str, value: str | None) -> str:
         normalized = str(value or "").strip().lower()
         mapping = {
-            "ghostface": "public_events.tempo.event.ghostface",
+            "observer": "public_events.tempo.event.observer",
+            "observador": "public_events.tempo.event.observer",
             "infestacao de aranhas": "public_events.tempo.event.spiders",
             "chuva de doces": "public_events.tempo.event.spiders",
             "julgamento": "public_events.tempo.event.carousel",
@@ -235,7 +241,7 @@ class PublicEventsCog(commands.Cog):
             return
 
         next_event_name, next_run_at = await self.get_next_scheduled_event(interaction.guild.id)
-        embed = discord.Embed(title=self.i18n.t(locale, "public_events.tempo.title"), color=self.GHOSTFACE_COLOR)
+        embed = discord.Embed(title=self.i18n.t(locale, "public_events.tempo.title"), color=self.OBSERVER_COLOR)
         embed.add_field(
             name=self.i18n.t(locale, "public_events.tempo.next_event_name"),
             value=self._display_event_name_localized(locale, next_event_name),
@@ -251,7 +257,7 @@ class PublicEventsCog(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.choices(
         evento=[
-            app_commands.Choice(name="Ghostface", value="ghostface"),
+            app_commands.Choice(name="Observador", value="observer"),
             app_commands.Choice(name="Chuva de Doces", value="aranhas"),
             app_commands.Choice(name="Carrossel", value="julgamento"),
         ]
@@ -267,12 +273,12 @@ class PublicEventsCog(commands.Cog):
             return
 
         config = self._load_config()
-        if evento.value == "ghostface":
-            ok, reason = await self._start_ghostface(interaction.guild, config)
+        if evento.value == "observer":
+            ok, reason = await self._start_observer(interaction.guild, config)
             if ok:
-                await self._audit_manual_start(interaction, "ghostface")
+                await self._audit_manual_start(interaction, "observer")
             await interaction.followup.send(
-                "Ghostface iniciado para teste." if ok else f"Nao foi possivel iniciar o Ghostface: {reason}",
+                "Observador iniciado para teste." if ok else f"Nao foi possivel iniciar o Observador: {reason}",
                 ephemeral=True,
             )
             return
@@ -313,13 +319,13 @@ class PublicEventsCog(commands.Cog):
         cancelled = False
         if await self.chat_candy_runtime.cancel_guild_spawn(self, guild.id):
             cancelled = True
-        ghostface_state = await self.public_events_repo.get_ghostface_state(guild.id)
-        if ghostface_state.get("active"):
-            timeout_task = self._ghostface_timeout_tasks.pop(guild.id, None)
+        observer_state = await self.public_events_repo.get_observer_state(guild.id)
+        if observer_state.get("active"):
+            timeout_task = self._observer_timeout_tasks.pop(guild.id, None)
             if timeout_task is not None:
                 timeout_task.cancel()
-            await self._mark_ghostface_cancelled(guild, ghostface_state)
-            await self.public_events_repo.reset_ghostface_state(guild.id)
+            await self._mark_observer_cancelled(guild, observer_state)
+            await self.public_events_repo.reset_observer_state(guild.id)
             cancelled = True
 
         spider_state = await self.public_events_repo.get_spider_state(guild.id)
@@ -335,7 +341,7 @@ class PublicEventsCog(commands.Cog):
 
         return cancelled
 
-    async def _mark_ghostface_cancelled(self, guild: discord.Guild, state: dict) -> None:
+    async def _mark_observer_cancelled(self, guild: discord.Guild, state: dict) -> None:
         channel_id = int(state.get("channel_id") or 0)
         message_id = int(state.get("message_id") or 0)
         if channel_id <= 0 or message_id <= 0:
@@ -352,9 +358,9 @@ class PublicEventsCog(commands.Cog):
             message = await channel.fetch_message(message_id)
             await message.edit(
                 embed=discord.Embed(
-                    title="📞 Ghostface cancelado",
+                    title="📹 Observador cancelado",
                     description="A rodada foi encerrada pela administracao.",
-                    color=self.GHOSTFACE_COLOR,
+                    color=self.OBSERVER_COLOR,
                 ),
                 view=None,
             )
@@ -373,7 +379,7 @@ class PublicEventsCog(commands.Cog):
             or now - self._last_reward_reconciliation_at >= timedelta(minutes=1)
         ):
             try:
-                await self.public_event_runtime.reconcile_pending_ghostface_rewards(self)
+                await self.public_event_runtime.reconcile_pending_observer_rewards(self)
                 await self.chat_candy_runtime.reconcile_pending_rewards(self)
                 self._last_reward_reconciliation_at = now
             except Exception:
@@ -422,16 +428,16 @@ class PublicEventsCog(commands.Cog):
             if announce_minutes_before > 0:
                 announce_at = next_run_at - timedelta(minutes=announce_minutes_before)
                 if announce_at <= now < next_run_at and state.get("last_announced_at") != next_run_at.isoformat():
-                    if next_event_name == "Ghostface":
+                    if self._is_observer_event(next_event_name):
                         channels = await self._get_event_channels(guild)
-                        ghostface_cfg = config.get("ghostface", {})
+                        observer_cfg = config.get("observer", {})
                         role_content = await self._get_notification_role_mention(guild)
                         for channel in channels:
-                            await self._send_ghostface_payload(
+                            await self._send_observer_payload(
                                 channel,
-                                ghostface_cfg,
+                                observer_cfg,
                                 content=role_content,
-                                embed=self._build_ghostface_announcement_embed(next_run_at),
+                                embed=self._build_observer_announcement_embed(next_run_at),
                             )
                     elif next_event_name == "Julgamento":
                         julgamento_cog = self.bot.get_cog("JulgamentoCog")
@@ -462,8 +468,8 @@ class PublicEventsCog(commands.Cog):
             if now < next_run_at:
                 continue
 
-            if next_event_name == "Ghostface":
-                await self._start_ghostface(guild, config)
+            if self._is_observer_event(next_event_name):
+                await self._start_observer(guild, config)
             elif next_event_name == "Julgamento":
                 julgamento_cog = self.bot.get_cog("JulgamentoCog")
                 if julgamento_cog is not None and hasattr(julgamento_cog, "start_scheduled_event"):
@@ -562,8 +568,8 @@ class PublicEventsCog(commands.Cog):
 
     def _enabled_event_names(self, config: dict) -> list[str]:
         enabled: list[str] = []
-        if config.get("ghostface", {}).get("enabled"):
-            enabled.append("Ghostface")
+        if config.get("observer", {}).get("enabled"):
+            enabled.append("Observador")
         if get_carousel_config().get("enabled"):
             enabled.append("Julgamento")
         if config.get("candy_shower", {}).get("enabled"):
@@ -572,11 +578,15 @@ class PublicEventsCog(commands.Cog):
 
     def _enabled_public_event_names(self, config: dict) -> list[str]:
         enabled: list[str] = []
-        if config.get("ghostface", {}).get("enabled"):
-            enabled.append("Ghostface")
+        if config.get("observer", {}).get("enabled"):
+            enabled.append("Observador")
         if config.get("candy_shower", {}).get("enabled"):
             enabled.append("Chuva de Doces")
         return enabled
+
+    def _is_observer_event(self, value: str | None) -> bool:
+        normalized = str(value or "").strip().casefold()
+        return normalized == "observador"
 
     def _parse_dt(self, value: str | None) -> datetime | None:
         if not value:
@@ -704,8 +714,8 @@ class PublicEventsCog(commands.Cog):
         return scheduled_at - timedelta(minutes=1) <= now <= scheduled_at + timedelta(seconds=15)
 
     async def _has_active_public_runtime(self, guild_id: int) -> bool:
-        ghostface_state = await self.public_events_repo.get_ghostface_state(guild_id)
-        if ghostface_state.get("active"):
+        observer_state = await self.public_events_repo.get_observer_state(guild_id)
+        if observer_state.get("active"):
             return True
         spider_state = await self.public_events_repo.get_spider_state(guild_id)
         if spider_state.get("active"):
@@ -718,7 +728,7 @@ class PublicEventsCog(commands.Cog):
     async def _reset_public_events_on_boot(self) -> None:
         for guild in self.bot.guilds:
             state = await self.public_events_repo.get_state(guild.id)
-            timeout_task = self._ghostface_timeout_tasks.pop(guild.id, None)
+            timeout_task = self._observer_timeout_tasks.pop(guild.id, None)
             if timeout_task is not None:
                 timeout_task.cancel()
             await self.public_events_repo.set_state(
@@ -801,10 +811,10 @@ class PublicEventsCog(commands.Cog):
             return True
         return False
 
-    async def _send_ghostface_payload(
+    async def _send_observer_payload(
         self,
         channel: discord.abc.MessageableChannel,
-        ghostface_cfg: dict,
+        observer_cfg: dict,
         *,
         content: str | None = None,
         embed: discord.Embed | None = None,
@@ -813,7 +823,7 @@ class PublicEventsCog(commands.Cog):
         attachment_filename: str | None = None,
         wait: bool = False,
     ) -> discord.Message | discord.WebhookMessage | None:
-        webhook = await self._get_or_create_ghostface_webhook(channel, ghostface_cfg)
+        webhook = await self._get_or_create_observer_webhook(channel, observer_cfg)
         if webhook is not None:
             attachment = (
                 discord.File(attachment_path, filename=attachment_filename)
@@ -824,7 +834,7 @@ class PublicEventsCog(commands.Cog):
                 send_kwargs = {
                     "content": content,
                     "embed": embed,
-                    "username": str(ghostface_cfg.get("webhook_name") or "Ghostface"),
+                    "username": str(observer_cfg.get("webhook_name") or "Observador"),
                     "thread": channel if isinstance(channel, discord.Thread) else discord.utils.MISSING,
                     "wait": wait,
                 }
@@ -857,10 +867,10 @@ class PublicEventsCog(commands.Cog):
             if attachment is not None:
                 attachment.close()
 
-    async def _get_or_create_ghostface_webhook(
+    async def _get_or_create_observer_webhook(
         self,
         channel: discord.abc.MessageableChannel,
-        ghostface_cfg: dict,
+        observer_cfg: dict,
     ) -> discord.Webhook | None:
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             return None
@@ -869,29 +879,44 @@ class PublicEventsCog(commands.Cog):
         if not isinstance(parent_channel, discord.TextChannel):
             return None
 
-        webhook_name = str(ghostface_cfg.get("webhook_name") or "Ghostface")
-        avatar_bytes = self._load_ghostface_webhook_avatar_bytes(ghostface_cfg)
+        webhook_name = str(observer_cfg.get("webhook_name") or "Observador")
+        avatar_bytes = self._load_observer_webhook_avatar_bytes(observer_cfg)
         try:
             webhooks = await parent_channel.webhooks()
         except (discord.Forbidden, discord.HTTPException):
             return None
 
-        for webhook in webhooks:
-            if webhook.name == webhook_name and webhook.user == self.bot.user:
-                if avatar_bytes is not None:
-                    try:
-                        await webhook.edit(name=webhook_name, avatar=avatar_bytes)
-                    except (discord.Forbidden, discord.HTTPException):
-                        pass
-                return webhook
+        legacy_name = "".join(("Ghost", "face"))
+        owned_webhooks = [webhook for webhook in webhooks if webhook.user == self.bot.user]
+        current_webhook = next((webhook for webhook in owned_webhooks if webhook.name == webhook_name), None)
+        legacy_webhooks = [webhook for webhook in owned_webhooks if webhook.name == legacy_name]
+
+        if current_webhook is not None:
+            if avatar_bytes is not None:
+                try:
+                    current_webhook = await current_webhook.edit(name=webhook_name, avatar=avatar_bytes)
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+            for legacy_webhook in legacy_webhooks:
+                try:
+                    await legacy_webhook.delete(reason="Webhook substituido pelo Observador")
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+            return current_webhook
+
+        if legacy_webhooks:
+            try:
+                return await legacy_webhooks[0].edit(name=webhook_name, avatar=avatar_bytes)
+            except (discord.Forbidden, discord.HTTPException):
+                pass
 
         try:
             return await parent_channel.create_webhook(name=webhook_name, avatar=avatar_bytes)
         except (discord.Forbidden, discord.HTTPException):
             return None
 
-    def _load_ghostface_webhook_avatar_bytes(self, ghostface_cfg: dict) -> bytes | None:
-        relative_path = str(ghostface_cfg.get("webhook_avatar_path") or "").strip()
+    def _load_observer_webhook_avatar_bytes(self, observer_cfg: dict) -> bytes | None:
+        relative_path = str(observer_cfg.get("webhook_avatar_path") or "").strip()
         if not relative_path:
             return None
         path = ROOT_DIR / relative_path
@@ -902,11 +927,11 @@ class PublicEventsCog(commands.Cog):
         except OSError:
             return None
 
-    async def _start_ghostface(self, guild: discord.Guild, config: dict) -> tuple[bool, str]:
-        return await self.public_event_runtime.start_ghostface(self, guild, config)
+    async def _start_observer(self, guild: discord.Guild, config: dict) -> tuple[bool, str]:
+        return await self.public_event_runtime.start_observer(self, guild, config)
 
-    async def _finish_ghostface_if_unanswered(self, guild_id: int, expires_at: datetime) -> None:
-        await self.public_event_runtime.finish_ghostface_if_unanswered(self, guild_id, expires_at)
+    async def _finish_observer_if_unanswered(self, guild_id: int, expires_at: datetime) -> None:
+        await self.public_event_runtime.finish_observer_if_unanswered(self, guild_id, expires_at)
 
     async def _restore_spider_finish_tasks(self) -> None:
         await self.public_event_runtime.restore_spider_finish_tasks(self)
@@ -1150,19 +1175,19 @@ class PublicEventsCog(commands.Cog):
         await self._maybe_handle_chat_bonus(message)
         await self.chat_candy_runtime.maybe_spawn(self, message)
         await self._maybe_spawn_spider(message)
-        await self.public_event_runtime.handle_ghostface_message(self, message)
+        await self.public_event_runtime.handle_observer_message(self, message)
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         if self._chat_candy_restored:
             return
-        await self.public_event_runtime.restore_active_ghostface_timeouts(self)
-        await self.public_event_runtime.reconcile_pending_ghostface_rewards(self)
+        await self.public_event_runtime.restore_active_observer_timeouts(self)
+        await self.public_event_runtime.reconcile_pending_observer_rewards(self)
         await self.chat_candy_runtime.restore_expiry_tasks(self)
         self._last_reward_reconciliation_at = datetime.now(timezone.utc)
         self._chat_candy_restored = True
 
-    async def _grant_ghostface_rewards(
+    async def _grant_observer_rewards(
         self,
         user_id: int,
         config: dict,
@@ -1192,7 +1217,7 @@ class PublicEventsCog(commands.Cog):
         if settlement is None:
             settlement = await self.reward_settlement_service.settle_once(
                 settlement_key,
-                "ghostface",
+                "observer",
                 user_id,
                 guild_id,
                 currencies=currencies,
@@ -1344,14 +1369,55 @@ class PublicEventsCog(commands.Cog):
             and message.channel.parent.id in event_channel_ids
         )
 
-    def _load_ghostface_questions(self, ghostface_cfg: dict) -> list[dict]:
-        return self.ghostface_catalog.load(ghostface_cfg)
+    def _load_observer_questions(self, observer_cfg: dict) -> list[dict]:
+        return self.observer_catalog.load(observer_cfg)
 
-    async def _pick_ghostface_question(
+    def _observer_archives_config(self, observer_cfg: dict | None = None) -> dict:
+        config = observer_cfg if observer_cfg is not None else self._load_config().get("observer", {})
+        return dict((config or {}).get("archives") or {})
+
+    async def _load_observer_archive_questions(self, guild_id: int, observer_cfg: dict) -> list[dict]:
+        archives_cfg = self._observer_archives_config(observer_cfg)
+        if not archives_cfg.get("enabled", True):
+            return []
+        questions: list[dict] = []
+        for archive in await self.observer_archives_repo.list_active(guild_id):
+            question = await self._prepare_observer_archive_question(archive, observer_cfg)
+            if question is not None:
+                questions.append(question)
+        return questions
+
+    async def _prepare_observer_archive_question(self, archive: dict, observer_cfg: dict) -> dict | None:
+        archives_cfg = self._observer_archives_config(observer_cfg)
+        cache_directory = str(archives_cfg.get("cache_directory") or "cache/observer_archives")
+        question = self.observer_archive_service.archive_to_question(archive)
+        hidden = self.observer_archive_service.resolve_cached_image(question["image_path"], cache_directory)
+        revealed = self.observer_archive_service.resolve_cached_image(
+            question["revealed_image_path"], cache_directory
+        )
+        if hidden is not None and revealed is not None:
+            return question
+        try:
+            hidden_path, revealed_path = await self.observer_archive_service.render_archive_pair(
+                self.observer_archive_service.draft_from_archive(archive),
+                cache_directory,
+            )
+        except Exception:
+            LOGGER.exception(
+                "Falha ao regenerar cards do arquivo guild=%s public_id=%s",
+                archive.get("guild_id"),
+                archive.get("public_id"),
+            )
+            return None
+        question["image_path"] = hidden_path
+        question["revealed_image_path"] = revealed_path
+        return question
+
+    async def _pick_observer_question(
         self,
         guild_id: int,
         questions: list[dict],
-        ghostface_cfg: dict | None = None,
+        observer_cfg: dict | None = None,
     ) -> dict | None:
         valid_questions = [question for question in questions if str(question.get("id") or "").strip()]
         if not valid_questions:
@@ -1359,9 +1425,9 @@ class PublicEventsCog(commands.Cog):
 
         questions_by_kind: dict[str, list[dict]] = {}
         for question in valid_questions:
-            questions_by_kind.setdefault(self.ghostface_catalog.kind(question), []).append(question)
+            questions_by_kind.setdefault(self.observer_catalog.kind(question), []).append(question)
 
-        weights_config = dict((ghostface_cfg or {}).get("round_type_weights") or {})
+        weights_config = dict((observer_cfg or {}).get("round_type_weights") or {})
         kinds = list(questions_by_kind)
         weights: list[float] = []
         for kind in kinds:
@@ -1372,7 +1438,7 @@ class PublicEventsCog(commands.Cog):
         selected_kind = random.choices(kinds, weights=weights, k=1)[0] if sum(weights) > 0 else random.choice(kinds)
         selected_pool = questions_by_kind[selected_kind]
 
-        used_ids = await self.public_events_repo.get_ghostface_used_question_ids(guild_id)
+        used_ids = await self.public_events_repo.get_observer_used_question_ids(guild_id)
         used_set = set(used_ids)
         available_questions = [
             question for question in selected_pool if str(question.get("id")) not in used_set
@@ -1387,16 +1453,40 @@ class PublicEventsCog(commands.Cog):
         question_id = str(question.get("id"))
         if question_id not in used_set:
             used_ids.append(question_id)
-        await self.public_events_repo.set_ghostface_used_question_ids(guild_id, used_ids)
+        await self.public_events_repo.set_observer_used_question_ids(guild_id, used_ids)
         return question
 
-    def _resolve_ghostface_image_path(self, question: dict) -> Path | None:
-        return self.ghostface_catalog.image_path(question)
+    def _resolve_observer_image_path(self, question: dict) -> Path | None:
+        if self.observer_catalog.kind(question) == "chat_quote":
+            archives_cfg = self._observer_archives_config()
+            return self.observer_archive_service.resolve_cached_image(
+                str(question.get("image_path") or ""),
+                str(archives_cfg.get("cache_directory") or "cache/observer_archives"),
+            )
+        return self.observer_catalog.image_path(question)
 
-    def _resolve_ghostface_attachment_filename(self, question: dict) -> str | None:
-        return self.ghostface_catalog.attachment_filename(question)
+    def _resolve_observer_attachment_filename(self, question: dict) -> str | None:
+        if self.observer_catalog.kind(question) == "chat_quote":
+            public_id = str(question.get("archive_public_id") or "archive")
+            return f"observer_{public_id}_hidden.png"
+        return self.observer_catalog.attachment_filename(question)
 
-    def _expand_ghostface_answers(self, question: dict) -> list[str]:
+    def _resolve_observer_revealed_image_path(self, question: dict | None) -> Path | None:
+        if not question or self.observer_catalog.kind(question) != "chat_quote":
+            return None
+        archives_cfg = self._observer_archives_config()
+        return self.observer_archive_service.resolve_cached_image(
+            str(question.get("revealed_image_path") or ""),
+            str(archives_cfg.get("cache_directory") or "cache/observer_archives"),
+        )
+
+    def _resolve_observer_revealed_attachment_filename(self, question: dict | None) -> str | None:
+        if not question or self.observer_catalog.kind(question) != "chat_quote":
+            return None
+        public_id = str(question.get("archive_public_id") or "archive")
+        return f"observer_{public_id}_revealed.png"
+
+    def _expand_observer_answers(self, question: dict) -> list[str]:
         answers = [str(answer).strip() for answer in question.get("answers", []) if str(answer).strip()]
         pool_name = str(question.get("answer_pool") or "").strip().lower()
         if pool_name == "horror_movies":
@@ -1427,7 +1517,7 @@ class PublicEventsCog(commands.Cog):
                         answers.append(value)
         return answers
 
-    def _resolve_ghostface_match_mode(self, question: dict) -> str:
+    def _resolve_observer_match_mode(self, question: dict) -> str:
         if bool(question.get("exact_match")):
             return "exact"
         mode = str(question.get("match_mode") or "normalized").strip().lower()
@@ -1435,14 +1525,14 @@ class PublicEventsCog(commands.Cog):
             return mode
         return "normalized"
 
-    def _resolve_ghostface_difficulty(self, question: dict) -> str:
+    def _resolve_observer_difficulty(self, question: dict) -> str:
         difficulty = str(question.get("difficulty") or "easy").strip().lower()
         if difficulty in {"easy", "medium", "hard"}:
             return difficulty
         return "easy"
 
-    def _prepare_ghostface_answer(self, value: str, match_mode: str) -> str:
-        trimmed = value.strip().translate(GHOSTFACE_CONFUSABLES)
+    def _prepare_observer_answer(self, value: str, match_mode: str) -> str:
+        trimmed = value.strip().translate(OBSERVER_CONFUSABLES)
         if match_mode in {"exact", "spaces", "spoiler"}:
             return trimmed.casefold()
         collapsed = " ".join(trimmed.split())
@@ -1451,7 +1541,7 @@ class PublicEventsCog(commands.Cog):
         no_punctuation = no_accents.translate(str.maketrans("", "", string.punctuation))
         return " ".join(no_punctuation.split())
 
-    def _resolve_ghostface_display_text(self, question: dict, match_mode: str) -> str | None:
+    def _resolve_observer_display_text(self, question: dict, match_mode: str) -> str | None:
         if match_mode not in {"spaces", "spoiler"}:
             return None
         display_text = str(question.get("display_text") or "").strip()
@@ -1462,10 +1552,10 @@ class PublicEventsCog(commands.Cog):
         if not display_text:
             return None
         if match_mode == "spaces":
-            return self._ghostface_disguise_spaces(display_text)
-        return self._ghostface_spoiler_words(display_text)
+            return self._observer_disguise_spaces(display_text)
+        return self._observer_spoiler_words(display_text)
 
-    def _resolve_ghostface_display_text_en(self, question: dict, match_mode: str) -> str | None:
+    def _resolve_observer_display_text_en(self, question: dict, match_mode: str) -> str | None:
         if match_mode not in {"spaces", "spoiler"}:
             return None
         display_text = str(question.get("display_text_en") or "").strip()
@@ -1474,36 +1564,58 @@ class PublicEventsCog(commands.Cog):
         if not display_text:
             return None
         if match_mode == "spaces":
-            return self._ghostface_disguise_spaces(display_text)
-        return self._ghostface_spoiler_words(display_text)
+            return self._observer_disguise_spaces(display_text)
+        return self._observer_spoiler_words(display_text)
 
-    def _find_ghostface_question(
+    def _find_observer_question(
         self,
-        ghostface_cfg: dict,
+        observer_cfg: dict,
         *,
         question_id: str | None,
         question_text: str | None,
     ) -> dict | None:
-        questions = self._load_ghostface_questions(ghostface_cfg)
-        question = self.ghostface_catalog.find_by_id(questions, question_id)
+        questions = self._load_observer_questions(observer_cfg)
+        question = self.observer_catalog.find_by_id(questions, question_id)
         if question is not None:
             return question
-        return self.ghostface_catalog.find_by_text(
+        return self.observer_catalog.find_by_text(
             questions,
             question_text,
-            lambda value: self._prepare_ghostface_answer(value, "normalized"),
+            lambda value: self._prepare_observer_answer(value, "normalized"),
         )
 
-    def _find_ghostface_question_by_text(self, ghostface_cfg: dict, question_text: str) -> dict | None:
-        return self._find_ghostface_question(
-            ghostface_cfg,
+    async def _find_observer_question_for_state(
+        self,
+        guild_id: int,
+        observer_cfg: dict,
+        *,
+        question_id: str | None,
+        question_text: str | None,
+    ) -> dict | None:
+        question = self._find_observer_question(
+            observer_cfg,
+            question_id=question_id,
+            question_text=question_text,
+        )
+        if question is not None:
+            return question
+        archive = await self.observer_archives_repo.get_by_question_id(guild_id, question_id)
+        if archive is None:
+            return None
+        return await self._prepare_observer_archive_question(archive, observer_cfg)
+
+    def _find_observer_question_by_text(self, observer_cfg: dict, question_text: str) -> dict | None:
+        return self._find_observer_question(
+            observer_cfg,
             question_id=None,
             question_text=question_text,
         )
 
-    def _resolve_ghostface_timeout_answer(self, question: dict | None) -> tuple[str, str]:
+    def _resolve_observer_timeout_answer(self, question: dict | None) -> tuple[str, str]:
         if question is None:
             return "Resposta correta", "Nao consegui recuperar a resposta desta pergunta."
+        if self.observer_catalog.kind(question) == "chat_quote":
+            return "Identidade confirmada", str(question.get("author_display_name") or "Autor desconhecido")
         pool_name = str(question.get("answer_pool") or "").strip().lower()
         if pool_name == "horror_movies":
             return "Respostas aceitas", "Varios titulos de filmes de terror eram aceitos nesta pergunta."
@@ -1516,10 +1628,10 @@ class PublicEventsCog(commands.Cog):
             return "Resposta correta", f"`{answers[0]}`"
         return "Resposta correta", "Nao consegui recuperar a resposta desta pergunta."
 
-    def _ghostface_disguise_spaces(self, value: str) -> str:
+    def _observer_disguise_spaces(self, value: str) -> str:
         return value.replace(" ", f" {INVISIBLE_SPACE}")
 
-    def _ghostface_spoiler_words(self, value: str) -> str:
+    def _observer_spoiler_words(self, value: str) -> str:
         return f" {INVISIBLE_SPACE}".join(f"||{part}||" for part in value.split(" "))
 
     async def _get_notification_role_mention(self, guild: discord.Guild) -> str | None:
@@ -1531,8 +1643,8 @@ class PublicEventsCog(commands.Cog):
             return None
         return role.mention
 
-    def _build_ghostface_announcement_embed(self, starts_at: datetime) -> discord.Embed:
-        return self.texts.build_ghostface_announcement_embed(self.GHOSTFACE_COLOR, starts_at)
+    def _build_observer_announcement_embed(self, starts_at: datetime) -> discord.Embed:
+        return self.texts.build_observer_announcement_embed(self.OBSERVER_COLOR, starts_at)
 
     def _build_spider_announcement_embed(self, starts_at: datetime) -> discord.Embed:
         return self.texts.build_spider_announcement_embed(discord.Color.from_rgb(115, 82, 168), starts_at)
@@ -1576,7 +1688,7 @@ class PublicEventsCog(commands.Cog):
             options=options,
         )
 
-    def _build_ghostface_question_embed(
+    def _build_observer_question_embed(
         self,
         question_text: str,
         deadline_at: datetime,
@@ -1585,8 +1697,8 @@ class PublicEventsCog(commands.Cog):
         difficulty: str,
         attachment_filename: str | None = None,
     ) -> discord.Embed:
-        return self.texts.build_ghostface_question_embed(
-            self.GHOSTFACE_COLOR,
+        return self.texts.build_observer_question_embed(
+            self.OBSERVER_COLOR,
             question_text=question_text,
             deadline_at=deadline_at,
             match_mode=match_mode,
@@ -1595,15 +1707,15 @@ class PublicEventsCog(commands.Cog):
             attachment_filename=attachment_filename,
         )
 
-    def build_ghostface_translation_embed(self, question: dict, deadline_at: datetime) -> discord.Embed | None:
+    def build_observer_translation_embed(self, question: dict, deadline_at: datetime) -> discord.Embed | None:
         question_en = str(question.get("question_en") or "").strip()
         if not question_en:
             return None
-        match_mode = self._resolve_ghostface_match_mode(question)
-        difficulty = self._resolve_ghostface_difficulty(question)
-        display_text = self._resolve_ghostface_display_text_en(question, match_mode)
-        return self.texts.build_ghostface_translation_embed(
-            self.GHOSTFACE_COLOR,
+        match_mode = self._resolve_observer_match_mode(question)
+        difficulty = self._resolve_observer_difficulty(question)
+        display_text = self._resolve_observer_display_text_en(question, match_mode)
+        return self.texts.build_observer_translation_embed(
+            self.OBSERVER_COLOR,
             question_en=question_en,
             deadline_at=deadline_at,
             match_mode=match_mode,
@@ -1611,15 +1723,15 @@ class PublicEventsCog(commands.Cog):
             difficulty=difficulty,
         )
 
-    def _build_ghostface_timeout_embed(self, *, answer_label: str, answer_value: str) -> discord.Embed:
-        return self.texts.build_ghostface_timeout_embed(
-            self.GHOSTFACE_COLOR,
+    def _build_observer_timeout_embed(self, *, answer_label: str, answer_value: str) -> discord.Embed:
+        return self.texts.build_observer_timeout_embed(
+            self.OBSERVER_COLOR,
             answer_label=answer_label,
             answer_value=answer_value,
         )
 
-    def _build_ghostface_winner_embed(self, winner_mention: str, summary: str) -> discord.Embed:
-        return self.texts.build_ghostface_winner_embed(self.GHOSTFACE_COLOR, winner_mention, summary)
+    def _build_observer_winner_embed(self, winner_mention: str, summary: str) -> discord.Embed:
+        return self.texts.build_observer_winner_embed(self.OBSERVER_COLOR, winner_mention, summary)
 
     def _build_tempo_unavailable_embed(self, title: str, description: str) -> discord.Embed:
         return self.texts.build_tempo_unavailable_embed(title, description)

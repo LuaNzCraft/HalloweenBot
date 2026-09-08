@@ -17,7 +17,7 @@ CUSTOM_EMOJI_RE = re.compile(r"^<(?P<animated>a)?:(?P<name>[A-Za-z0-9_]+):(?P<id
 logger = logging.getLogger(__name__)
 
 
-class GhostfaceTranslateView(discord.ui.View):
+class ObserverTranslateView(discord.ui.View):
     def __init__(self, cog: "PublicEventsCog", question: dict, deadline_at: datetime) -> None:
         timeout_seconds = max(1, int((deadline_at - discord.utils.utcnow()).total_seconds()))
         super().__init__(timeout=timeout_seconds)
@@ -36,7 +36,7 @@ class GhostfaceTranslateView(discord.ui.View):
                 ephemeral=True,
             )
             return
-        embed = self.cog.build_ghostface_translation_embed(self.question, self.deadline_at)
+        embed = self.cog.build_observer_translation_embed(self.question, self.deadline_at)
         if embed is None:
             await interaction.response.send_message(
                 "This question does not have an English version yet.",

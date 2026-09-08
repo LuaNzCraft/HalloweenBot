@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from views.public_event_views import GhostfaceTranslateView, PublicEventTranslateView
+from views.public_event_views import ObserverTranslateView, PublicEventTranslateView
 
 
 if TYPE_CHECKING:
@@ -19,50 +19,51 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PublicEventRuntimeService:
-    async def start_ghostface(
+    async def start_observer(
         self,
         cog: "PublicEventsCog",
         guild: discord.Guild,
         config: dict,
     ) -> tuple[bool, str]:
-        ghostface_cfg = config.get("ghostface", {})
+        observer_cfg = config.get("observer", {})
         channels = await cog._get_event_channels(guild)
         if not channels:
             return False, "Nenhum canal de evento esta configurado."
 
-        active_state = await cog.public_events_repo.get_ghostface_state(guild.id)
+        active_state = await cog.public_events_repo.get_observer_state(guild.id)
         if active_state.get("winner_user_id") and not active_state.get("reward_settled_at"):
             try:
-                await self.settle_ghostface_reward(cog, guild, active_state)
+                await self.settle_observer_reward(cog, guild, active_state)
             except Exception:
-                LOGGER.exception("Ghostface anterior ainda possui recompensa pendente na guild %s", guild.id)
+                LOGGER.exception("Observador anterior ainda possui recompensa pendente na guild %s", guild.id)
                 return False, "O premio da rodada anterior ainda esta sendo reconciliado."
-            active_state = await cog.public_events_repo.get_ghostface_state(guild.id)
+            active_state = await cog.public_events_repo.get_observer_state(guild.id)
         if active_state.get("active"):
-            return False, "O Ghostface ja esta ativo."
+            return False, "O Observador ja esta ativo."
 
-        questions = cog._load_ghostface_questions(ghostface_cfg)
+        questions = cog._load_observer_questions(observer_cfg)
+        questions.extend(await cog._load_observer_archive_questions(guild.id, observer_cfg))
         if not questions:
-            return False, "Nao ha perguntas do Ghostface configuradas."
+            return False, "Nao ha perguntas do Observador configuradas."
 
-        question = await cog._pick_ghostface_question(guild.id, questions, ghostface_cfg)
+        question = await cog._pick_observer_question(guild.id, questions, observer_cfg)
         if question is None:
-            return False, "Nao foi possivel escolher uma pergunta do Ghostface."
+            return False, "Nao foi possivel escolher uma pergunta do Observador."
         question_id = str(question.get("id") or "")
-        match_mode = cog._resolve_ghostface_match_mode(question)
-        difficulty = cog._resolve_ghostface_difficulty(question)
-        timeout_seconds = int(ghostface_cfg.get("answer_timeout_seconds", 90))
+        match_mode = cog._resolve_observer_match_mode(question)
+        difficulty = cog._resolve_observer_difficulty(question)
+        timeout_seconds = int(observer_cfg.get("answer_timeout_seconds", 90))
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=timeout_seconds)
         accepted_answers = [
-            cog._prepare_ghostface_answer(str(answer), match_mode)
-            for answer in cog._expand_ghostface_answers(question)
+            cog._prepare_observer_answer(str(answer), match_mode)
+            for answer in cog._expand_observer_answers(question)
         ]
-        display_text = cog._resolve_ghostface_display_text(question, match_mode)
-        attachment_path = cog._resolve_ghostface_image_path(question)
-        attachment_filename = cog._resolve_ghostface_attachment_filename(question)
+        display_text = cog._resolve_observer_display_text(question, match_mode)
+        attachment_path = cog._resolve_observer_image_path(question)
+        attachment_filename = cog._resolve_observer_attachment_filename(question)
         channel = channels[0]
-        embed = cog._build_ghostface_question_embed(
+        embed = cog._build_observer_question_embed(
             str(question["question"]),
             expires_at,
             match_mode,
@@ -70,18 +71,18 @@ class PublicEventRuntimeService:
             difficulty,
             attachment_filename,
         )
-        message = await cog._send_ghostface_payload(
+        message = await cog._send_observer_payload(
             channel,
-            ghostface_cfg,
+            observer_cfg,
             embed=embed,
-            view=GhostfaceTranslateView(cog, question, expires_at),
+            view=ObserverTranslateView(cog, question, expires_at),
             attachment_path=attachment_path,
             attachment_filename=attachment_filename,
             wait=True,
         )
         if message is None:
-            return False, "Nao foi possivel publicar o Ghostface no canal configurado."
-        await cog.public_events_repo.set_ghostface_state(
+            return False, "Nao foi possivel publicar o Observador no canal configurado."
+        await cog.public_events_repo.set_observer_state(
             guild.id,
             active=True,
             channel_id=channel.id,
@@ -95,15 +96,15 @@ class PublicEventRuntimeService:
             message_id=message.id,
             winner_user_id=None,
         )
-        existing_timeout = cog._ghostface_timeout_tasks.pop(guild.id, None)
+        existing_timeout = cog._observer_timeout_tasks.pop(guild.id, None)
         if existing_timeout is not None:
             existing_timeout.cancel()
-        cog._ghostface_timeout_tasks[guild.id] = cog.bot.loop.create_task(
-            self.finish_ghostface_if_unanswered(cog, guild.id, expires_at)
+        cog._observer_timeout_tasks[guild.id] = cog.bot.loop.create_task(
+            self.finish_observer_if_unanswered(cog, guild.id, expires_at)
         )
         return True, "ok"
 
-    async def finish_ghostface_if_unanswered(
+    async def finish_observer_if_unanswered(
         self,
         cog: "PublicEventsCog",
         guild_id: int,
@@ -113,15 +114,15 @@ class PublicEventRuntimeService:
         try:
             delay = max(0.0, (expires_at - datetime.now(timezone.utc)).total_seconds())
             await discord.utils.sleep_until(expires_at) if delay > 0 else None
-            if guild_id in cog._resolving_ghostface_guilds:
+            if guild_id in cog._resolving_observer_guilds:
                 return
-            cog._resolving_ghostface_guilds.add(guild_id)
-            state = await cog.public_events_repo.get_ghostface_state(guild_id)
+            cog._resolving_observer_guilds.add(guild_id)
+            state = await cog.public_events_repo.get_observer_state(guild_id)
             if not state.get("active"):
                 return
             guild = cog.bot.get_guild(guild_id)
             if guild is None:
-                await cog.public_events_repo.set_ghostface_state(
+                await cog.public_events_repo.set_observer_state(
                     guild_id,
                     active=False,
                     channel_id=state.get("channel_id"),
@@ -137,42 +138,51 @@ class PublicEventRuntimeService:
                 )
                 return
             channel = guild.get_channel(int(state["channel_id"])) if state.get("channel_id") else None
-            ghostface_cfg = cog._load_config().get("ghostface", {})
-            question = cog._find_ghostface_question(
-                ghostface_cfg,
-                question_id=state.get("question_id"),
-                question_text=state.get("question_text"),
+            observer_cfg = cog._load_config().get("observer", {})
+            try:
+                question = await cog._find_observer_question_for_state(
+                    guild_id,
+                    observer_cfg,
+                    question_id=state.get("question_id"),
+                    question_text=state.get("question_text"),
+                )
+            except Exception:
+                LOGGER.exception("Falha ao recuperar pergunta do Observador na guild %s", guild_id)
+                question = None
+            answer_label, answer_value = cog._resolve_observer_timeout_answer(question)
+            revealed_path = cog._resolve_observer_revealed_image_path(question)
+            revealed_filename = cog._resolve_observer_revealed_attachment_filename(question)
+            timeout_embed = cog._build_observer_timeout_embed(
+                answer_label=answer_label,
+                answer_value=answer_value,
             )
-            answer_label, answer_value = cog._resolve_ghostface_timeout_answer(question)
+            if revealed_path is not None and revealed_filename:
+                timeout_embed.set_image(url=f"attachment://{revealed_filename}")
             if isinstance(channel, (discord.TextChannel, discord.Thread)):
                 try:
                     edited = False
                     message_id = int(state.get("message_id") or 0)
-                    if message_id > 0:
+                    if message_id > 0 and revealed_path is None:
                         try:
                             original_message = await channel.fetch_message(message_id)
                             await original_message.edit(
-                                embed=cog._build_ghostface_timeout_embed(
-                                    answer_label=answer_label,
-                                    answer_value=answer_value,
-                                ),
+                                embed=timeout_embed,
                                 view=None,
                             )
                             edited = True
                         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
                             edited = False
                     if not edited:
-                        await cog._send_ghostface_payload(
+                        await cog._send_observer_payload(
                             channel,
-                            ghostface_cfg,
-                            embed=cog._build_ghostface_timeout_embed(
-                                answer_label=answer_label,
-                                answer_value=answer_value,
-                            ),
+                            observer_cfg,
+                            embed=timeout_embed,
+                            attachment_path=revealed_path,
+                            attachment_filename=revealed_filename,
                         )
                 except discord.HTTPException:
                     pass
-            await cog.public_events_repo.set_ghostface_state(
+            await cog.public_events_repo.set_observer_state(
                 guild_id,
                 active=False,
                 channel_id=state.get("channel_id"),
@@ -189,16 +199,16 @@ class PublicEventRuntimeService:
         except asyncio.CancelledError:
             raise
         finally:
-            if cog._ghostface_timeout_tasks.get(guild_id) is current_task:
-                cog._ghostface_timeout_tasks.pop(guild_id, None)
-            cog._resolving_ghostface_guilds.discard(guild_id)
+            if cog._observer_timeout_tasks.get(guild_id) is current_task:
+                cog._observer_timeout_tasks.pop(guild_id, None)
+            cog._resolving_observer_guilds.discard(guild_id)
 
-    async def handle_ghostface_message(self, cog: "PublicEventsCog", message: discord.Message) -> None:
-        if message.guild.id in cog._resolving_ghostface_guilds:
+    async def handle_observer_message(self, cog: "PublicEventsCog", message: discord.Message) -> None:
+        if message.guild.id in cog._resolving_observer_guilds:
             return
-        cog._resolving_ghostface_guilds.add(message.guild.id)
+        cog._resolving_observer_guilds.add(message.guild.id)
         try:
-            state = await cog.public_events_repo.get_ghostface_state(message.guild.id)
+            state = await cog.public_events_repo.get_observer_state(message.guild.id)
             if not state.get("active"):
                 return
             if state.get("channel_id") != message.channel.id:
@@ -208,67 +218,87 @@ class PublicEventRuntimeService:
                 return
 
             match_mode = str(state.get("answer_match_mode") or "normalized")
-            prepared_answer = cog._prepare_ghostface_answer(message.content, match_mode)
+            prepared_answer = cog._prepare_observer_answer(message.content, match_mode)
             answers = {str(answer) for answer in state.get("accepted_answers", [])}
             if prepared_answer not in answers:
                 return
 
-            config = cog._load_config().get("ghostface", {})
-            claimed = await cog.public_events_repo.claim_ghostface_winner(message.guild.id, message.author.id)
+            config = cog._load_config().get("observer", {})
+            claimed = await cog.public_events_repo.claim_observer_winner(message.guild.id, message.author.id)
             if not claimed:
                 return
-            timeout_task = cog._ghostface_timeout_tasks.pop(message.guild.id, None)
+            timeout_task = cog._observer_timeout_tasks.pop(message.guild.id, None)
             if timeout_task is not None:
                 timeout_task.cancel()
             claimed_state = dict(state)
             claimed_state["winner_user_id"] = message.author.id
             try:
-                reward_lines = await self.settle_ghostface_reward(cog, message.guild, claimed_state, config)
+                reward_lines = await self.settle_observer_reward(cog, message.guild, claimed_state, config)
                 summary = "\n".join(reward_lines) if reward_lines else "Sem recompensa configurada."
             except Exception:
                 LOGGER.exception(
-                    "Falha ao liquidar Ghostface (guild=%s, user=%s)",
+                    "Falha ao liquidar Observador (guild=%s, user=%s)",
                     message.guild.id,
                     message.author.id,
                 )
                 summary = "Recompensa pendente de verificacao."
             try:
-                await cog._send_ghostface_payload(
+                question = await cog._find_observer_question_for_state(
+                    message.guild.id,
+                    config,
+                    question_id=state.get("question_id"),
+                    question_text=state.get("question_text"),
+                )
+                winner_embed = cog._build_observer_winner_embed(message.author.mention, summary)
+                if question is not None and cog.observer_catalog.kind(question) == "chat_quote":
+                    answer_label, answer_value = cog._resolve_observer_timeout_answer(question)
+                    winner_embed.add_field(name=answer_label, value=answer_value, inline=False)
+                revealed_path = cog._resolve_observer_revealed_image_path(question)
+                revealed_filename = cog._resolve_observer_revealed_attachment_filename(question)
+                if revealed_path is not None and revealed_filename:
+                    winner_embed.set_image(url=f"attachment://{revealed_filename}")
+                await cog._send_observer_payload(
                     message.channel,
                     config,
-                    embed=cog._build_ghostface_winner_embed(message.author.mention, summary),
+                    embed=winner_embed,
+                    attachment_path=revealed_path,
+                    attachment_filename=revealed_filename,
                 )
-            except discord.HTTPException:
-                pass
+            except Exception:
+                LOGGER.exception(
+                    "Falha ao publicar resultado do Observador (guild=%s, user=%s)",
+                    message.guild.id,
+                    message.author.id,
+                )
         finally:
-            cog._resolving_ghostface_guilds.discard(message.guild.id)
+            cog._resolving_observer_guilds.discard(message.guild.id)
 
-    async def reconcile_pending_ghostface_rewards(self, cog: "PublicEventsCog") -> None:
-        for state in await cog.public_events_repo.list_pending_ghostface_rewards():
+    async def reconcile_pending_observer_rewards(self, cog: "PublicEventsCog") -> None:
+        for state in await cog.public_events_repo.list_pending_observer_rewards():
             guild_id = int(state["guild_id"])
             guild = cog.bot.get_guild(guild_id)
             if guild is None:
                 continue
             try:
-                await self.settle_ghostface_reward(cog, guild, state)
+                await self.settle_observer_reward(cog, guild, state)
             except Exception:
                 LOGGER.exception(
-                    "Falha ao reconciliar Ghostface (guild=%s, user=%s)",
+                    "Falha ao reconciliar Observador (guild=%s, user=%s)",
                     guild_id,
                     state.get("winner_user_id"),
                 )
 
-    async def restore_active_ghostface_timeouts(self, cog: "PublicEventsCog") -> None:
-        for state in await cog.public_events_repo.list_active_ghostface_states():
+    async def restore_active_observer_timeouts(self, cog: "PublicEventsCog") -> None:
+        for state in await cog.public_events_repo.list_active_observer_states():
             guild_id = int(state["guild_id"])
-            if cog.bot.get_guild(guild_id) is None or guild_id in cog._ghostface_timeout_tasks:
+            if cog.bot.get_guild(guild_id) is None or guild_id in cog._observer_timeout_tasks:
                 continue
             expires_at = cog._parse_dt(state.get("expires_at")) or datetime.now(timezone.utc)
-            cog._ghostface_timeout_tasks[guild_id] = cog.bot.loop.create_task(
-                self.finish_ghostface_if_unanswered(cog, guild_id, expires_at)
+            cog._observer_timeout_tasks[guild_id] = cog.bot.loop.create_task(
+                self.finish_observer_if_unanswered(cog, guild_id, expires_at)
             )
 
-    async def settle_ghostface_reward(
+    async def settle_observer_reward(
         self,
         cog: "PublicEventsCog",
         guild: discord.Guild,
@@ -277,14 +307,14 @@ class PublicEventRuntimeService:
     ) -> list[str]:
         winner_user_id = int(state["winner_user_id"])
         event_id = str(state.get("message_id") or state.get("started_at") or state.get("question_id") or "unknown")
-        reward_lines = await cog._grant_ghostface_rewards(
+        reward_lines = await cog._grant_observer_rewards(
             winner_user_id,
-            config or cog._load_config().get("ghostface", {}),
+            config or cog._load_config().get("observer", {}),
             guild.id,
             str(state.get("question_difficulty") or "easy"),
-            f"ghostface:{guild.id}:{event_id}",
+            f"observer:{guild.id}:{event_id}",
         )
-        await cog.public_events_repo.mark_ghostface_reward_settled(
+        await cog.public_events_repo.mark_observer_reward_settled(
             guild.id,
             winner_user_id,
             datetime.now(timezone.utc).isoformat(),

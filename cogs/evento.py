@@ -111,7 +111,7 @@ class EventoCog(commands.Cog):
         if public_events_cog is not None and hasattr(public_events_cog, "cancel_active_event"):
             await public_events_cog.cancel_active_event(interaction.guild)
         else:
-            await self.public_events_repo.reset_ghostface_state(interaction.guild.id)
+            await self.public_events_repo.reset_observer_state(interaction.guild.id)
             await self.public_events_repo.reset_spider_state(interaction.guild.id)
             julgamento_cog = self.bot.get_cog("JulgamentoCog")
             if julgamento_cog is not None and hasattr(julgamento_cog, "force_reset"):

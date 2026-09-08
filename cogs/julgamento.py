@@ -17,7 +17,7 @@ from discord.ext import commands, tasks
 from repositories.admin_repo import AdminRepo
 from repositories.julgamento_repo import JulgamentoRepo
 from repositories.users_repo import UsersRepo
-from services.ghostface_question_catalog import GhostfaceQuestionCatalog
+from services.observer_question_catalog import ObserverQuestionCatalog
 from services.config_service import get_carousel_config
 from services.i18n_service import I18nService
 from services.mission_service import MissionService
@@ -31,7 +31,7 @@ from utils.event_config import get_achievements_config
 ROOT_DIR = Path(__file__).resolve().parent.parent
 JULGAMENTO_COLOR = discord.Color.from_rgb(171, 52, 40)
 LOGGER = logging.getLogger(__name__)
-GHOSTFACE_CONFUSABLES = str.maketrans(
+OBSERVER_CONFUSABLES = str.maketrans(
     {
         "\u0410": "A",
         "\u0430": "a",
@@ -59,7 +59,7 @@ class JulgamentoCog(commands.Cog):
         )
         self.runtime_service = JulgamentoRuntimeService()
         self.texts_service = JulgamentoTextsService()
-        self.question_catalog = GhostfaceQuestionCatalog(ROOT_DIR)
+        self.question_catalog = ObserverQuestionCatalog(ROOT_DIR)
         self._resolving_guilds: set[int] = set()
         self._finishing_guilds: set[int] = set()
         self._starting_round_guilds: set[int] = set()
@@ -1177,7 +1177,7 @@ class JulgamentoCog(commands.Cog):
         return unique
 
     def _prepare_answer(self, value: str, match_mode: str) -> str:
-        trimmed = value.strip().translate(GHOSTFACE_CONFUSABLES)
+        trimmed = value.strip().translate(OBSERVER_CONFUSABLES)
         if match_mode in {"exact", "spaces", "spoiler"}:
             return trimmed.casefold()
         collapsed = " ".join(trimmed.split())

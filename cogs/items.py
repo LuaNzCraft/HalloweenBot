@@ -24,7 +24,7 @@ ITEM_ENGLISH_LABELS = {
     "mute": "Mute",
     "switch": "Switch",
     "interferencia": "Interference",
-    "ghostface_hint": "Ghostface Hint",
+    "observer_hint": "Observer Hint",
     "ticket_carrossel": "Carousel Ticket",
 }
 
@@ -166,8 +166,8 @@ class ItemsCog(commands.Cog):
             await self.runtime.handle_interference(interaction, alvo, locale)
             return
 
-        if normalized_item_id == "ghostface_hint":
-            await self.runtime.handle_ghostface_hint(interaction, locale)
+        if normalized_item_id == "observer_hint":
+            await self.runtime.handle_observer_hint(interaction, locale)
             return
 
         target_error = validate_target_user(

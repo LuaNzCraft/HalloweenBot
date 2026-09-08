@@ -9,33 +9,33 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_QUESTION_SOURCE = "content/halloween/ghostface_questions.json"
-DEFAULT_MEDIA_DIRECTORY = "Assets/Ghostface/Movies"
+DEFAULT_QUESTION_SOURCE = "content/halloween/observer_questions.json"
+DEFAULT_MEDIA_DIRECTORY = "Assets/Observador/Movies"
 ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
 
-class GhostfaceQuestionCatalog:
+class ObserverQuestionCatalog:
     def __init__(self, root_dir: Path) -> None:
         self.root_dir = root_dir.resolve()
         self.media_dir = (self.root_dir / DEFAULT_MEDIA_DIRECTORY).resolve()
 
-    def load(self, ghostface_cfg: dict) -> list[dict]:
+    def load(self, observer_cfg: dict) -> list[dict]:
         questions: list[dict] = []
         seen_ids: set[str] = set()
 
-        for source in self._question_sources(ghostface_cfg):
+        for source in self._question_sources(observer_cfg):
             path = self._resolve_source_path(source)
             if path is None or not path.is_file():
-                logger.warning("Fonte de perguntas do Ghostface nao encontrada: %s", source)
+                logger.warning("Fonte de perguntas do Observador nao encontrada: %s", source)
                 continue
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
-                logger.exception("Falha ao carregar fonte de perguntas do Ghostface: %s", path)
+                logger.exception("Falha ao carregar fonte de perguntas do Observador: %s", path)
                 continue
             if not isinstance(payload, list):
-                logger.warning("Fonte do Ghostface precisa conter uma lista: %s", path)
+                logger.warning("Fonte do Observador precisa conter uma lista: %s", path)
                 continue
 
             for raw_question in payload:
@@ -44,7 +44,7 @@ class GhostfaceQuestionCatalog:
                     continue
                 question_id = str(question["id"])
                 if question_id in seen_ids:
-                    logger.warning("ID duplicado ignorado no catalogo do Ghostface: %s", question_id)
+                    logger.warning("ID duplicado ignorado no catalogo do Observador: %s", question_id)
                     continue
                 seen_ids.add(question_id)
                 questions.append(question)
@@ -77,7 +77,11 @@ class GhostfaceQuestionCatalog:
 
     def kind(self, question: dict) -> str:
         value = str(question.get("kind") or "text").strip().lower()
-        return "movie_image" if value in {"image", "movie_image"} else "text"
+        if value in {"image", "movie_image"}:
+            return "movie_image"
+        if value == "chat_quote":
+            return "chat_quote"
+        return "text"
 
     def image_path(self, question: dict) -> Path | None:
         if self.kind(question) != "movie_image":
@@ -92,13 +96,13 @@ class GhostfaceQuestionCatalog:
         question_id = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(question.get("id") or "movie"))
         return f"{question_id}{image_path.suffix.lower()}"
 
-    def _question_sources(self, ghostface_cfg: dict) -> list[str]:
-        configured_sources = ghostface_cfg.get("question_sources")
+    def _question_sources(self, observer_cfg: dict) -> list[str]:
+        configured_sources = observer_cfg.get("question_sources")
         if isinstance(configured_sources, list):
             sources = [str(value).strip() for value in configured_sources if str(value).strip()]
             if sources:
                 return sources
-        fallback = str(ghostface_cfg.get("question_source") or DEFAULT_QUESTION_SOURCE).strip()
+        fallback = str(observer_cfg.get("question_source") or DEFAULT_QUESTION_SOURCE).strip()
         return [fallback]
 
     def _resolve_source_path(self, relative_path: str) -> Path | None:
@@ -127,7 +131,7 @@ class GhostfaceQuestionCatalog:
 
     def _validate_question(self, raw_question: object, *, source: Path) -> dict | None:
         if not isinstance(raw_question, dict):
-            logger.warning("Entrada invalida ignorada no catalogo do Ghostface: %s", source)
+            logger.warning("Entrada invalida ignorada no catalogo do Observador: %s", source)
             return None
         if raw_question.get("enabled") is False:
             return None

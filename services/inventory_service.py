@@ -65,7 +65,7 @@ class InventoryService:
             return UseItemResult(False, False, self.i18n.t(locale, "items.not_implemented"))
 
         # Social/runtime items are handled by ItemsCog/ItemsRuntimeService, not by the generic inventory path.
-        if item.id in {"mute", "switch", "interferencia", "ghostface_hint"}:
+        if item.id in {"mute", "switch", "interferencia", "observer_hint"}:
             return UseItemResult(False, False, self.i18n.t(locale, "items.not_implemented"))
 
         user = await self.users_repo.get_user(user_id)

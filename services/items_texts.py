@@ -106,7 +106,7 @@ class ItemsTextService:
             color=ITEMS_COLOR,
         )
 
-    def ghostface_hint_embed(
+    def observer_hint_embed(
         self,
         locale: str,
         *,
@@ -117,34 +117,34 @@ class ItemsTextService:
         extra_hint: str | None,
         ) -> discord.Embed:
         embed = discord.Embed(
-            title=self.i18n.t(locale, "ghostface_hint.title"),
-            description=self.i18n.t(locale, "ghostface_hint.description"),
+            title=self.i18n.t(locale, "observer_hint.title"),
+            description=self.i18n.t(locale, "observer_hint.description"),
             color=ITEMS_COLOR,
         )
         embed.add_field(
-            name=self.i18n.t(locale, "ghostface_hint.words_name"),
-            value=self.i18n.t(locale, "ghostface_hint.words_value", count=word_count),
+            name=self.i18n.t(locale, "observer_hint.words_name"),
+            value=self.i18n.t(locale, "observer_hint.words_value", count=word_count),
             inline=False,
         )
         embed.add_field(
-            name=self.i18n.t(locale, "ghostface_hint.initials_name"),
+            name=self.i18n.t(locale, "observer_hint.initials_name"),
             value=f"`{initials}`",
             inline=False,
         )
         embed.add_field(
-            name=self.i18n.t(locale, "ghostface_hint.pattern_name"),
+            name=self.i18n.t(locale, "observer_hint.pattern_name"),
             value=f"`{pattern}`",
             inline=False,
         )
         if extra_hint:
             embed.add_field(
-                name=self.i18n.t(locale, "ghostface_hint.extra_name"),
+                name=self.i18n.t(locale, "observer_hint.extra_name"),
                 value=extra_hint,
                 inline=False,
             )
         if remaining_at is not None:
             embed.add_field(
-                name=self.i18n.t(locale, "ghostface_hint.remaining_name"),
+                name=self.i18n.t(locale, "observer_hint.remaining_name"),
                 value=discord.utils.format_dt(remaining_at, style="R"),
                 inline=False,
             )

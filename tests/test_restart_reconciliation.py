@@ -32,16 +32,16 @@ class CapturingLoop:
 
 
 class RestartReconciliationTests(unittest.IsolatedAsyncioTestCase):
-    async def test_active_ghostface_timeout_is_recreated_after_ready(self) -> None:
+    async def test_active_observer_timeout_is_recreated_after_ready(self) -> None:
         with TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "halloween.sqlite3"
             repo = PublicEventsRepo(path)
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-            await repo.set_ghostface_state(
+            await repo.set_observer_state(
                 100,
                 active=True,
                 channel_id=200,
-                question_id="ghost-1",
+                question_id="observer-1",
                 question_text="Pergunta",
                 accepted_answers=["resposta"],
                 answer_match_mode="normalized",
@@ -55,13 +55,13 @@ class RestartReconciliationTests(unittest.IsolatedAsyncioTestCase):
             cog = SimpleNamespace(
                 public_events_repo=repo,
                 bot=SimpleNamespace(get_guild=lambda guild_id: object(), loop=loop),
-                _ghostface_timeout_tasks={},
+                _observer_timeout_tasks={},
                 _parse_dt=lambda value: datetime.fromisoformat(str(value)) if value else None,
             )
 
-            await PublicEventRuntimeService().restore_active_ghostface_timeouts(cog)
+            await PublicEventRuntimeService().restore_active_observer_timeouts(cog)
 
-            self.assertIn(100, cog._ghostface_timeout_tasks)
+            self.assertIn(100, cog._observer_timeout_tasks)
             self.assertEqual(len(loop.coroutines), 1)
             loop.close_coroutines()
 

@@ -45,7 +45,7 @@ class PublicEventsRepo:
                 )
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS ghostface_runtime (
+                CREATE TABLE IF NOT EXISTS observer_runtime (
                     guild_id INTEGER PRIMARY KEY,
                     active INTEGER NOT NULL DEFAULT 0,
                     channel_id INTEGER,
@@ -64,7 +64,7 @@ class PublicEventsRepo:
             )
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS ghostface_rotation (
+                CREATE TABLE IF NOT EXISTS observer_rotation (
                     guild_id INTEGER PRIMARY KEY,
                     used_question_ids_json TEXT NOT NULL DEFAULT '[]'
                 )
@@ -108,7 +108,7 @@ class PublicEventsRepo:
             )
             await db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS ghostface_hint_uses (
+                CREATE TABLE IF NOT EXISTS observer_hint_uses (
                     guild_id INTEGER NOT NULL,
                     user_id INTEGER NOT NULL,
                     question_id TEXT NOT NULL,
@@ -117,33 +117,33 @@ class PublicEventsRepo:
                 )
                 """
             )
-            columns_cursor = await db.execute("PRAGMA table_info(ghostface_runtime)")
+            columns_cursor = await db.execute("PRAGMA table_info(observer_runtime)")
             columns = {row[1] for row in await columns_cursor.fetchall()}
             if "answer_match_mode" not in columns:
                 await db.execute(
                     """
-                    ALTER TABLE ghostface_runtime
+                    ALTER TABLE observer_runtime
                     ADD COLUMN answer_match_mode TEXT NOT NULL DEFAULT 'normalized'
                     """
                 )
             if "question_id" not in columns:
                 await db.execute(
                     """
-                    ALTER TABLE ghostface_runtime
+                    ALTER TABLE observer_runtime
                     ADD COLUMN question_id TEXT
                     """
                 )
             if "question_difficulty" not in columns:
                 await db.execute(
                     """
-                    ALTER TABLE ghostface_runtime
+                    ALTER TABLE observer_runtime
                     ADD COLUMN question_difficulty TEXT NOT NULL DEFAULT 'easy'
                     """
                 )
             if "reward_settled_at" not in columns:
                 await db.execute(
                     """
-                    ALTER TABLE ghostface_runtime
+                    ALTER TABLE observer_runtime
                     ADD COLUMN reward_settled_at TEXT
                     """
                 )
@@ -202,7 +202,7 @@ class PublicEventsRepo:
             )
             await db.commit()
 
-    async def get_ghostface_state(self, guild_id: int) -> dict[str, Any]:
+    async def get_observer_state(self, guild_id: int) -> dict[str, Any]:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             db.row_factory = aiosqlite.Row
@@ -211,7 +211,7 @@ class PublicEventsRepo:
                 SELECT active, channel_id, question_id, question_text, accepted_answers_json,
                        answer_match_mode, question_difficulty, started_at, expires_at,
                        message_id, winner_user_id, reward_settled_at
-                FROM ghostface_runtime
+                FROM observer_runtime
                 WHERE guild_id = ?
                 """,
                 (guild_id,),
@@ -238,7 +238,7 @@ class PublicEventsRepo:
         state["accepted_answers"] = json.loads(state.pop("accepted_answers_json") or "[]")
         return state
 
-    async def set_ghostface_state(
+    async def set_observer_state(
         self,
         guild_id: int,
         *,
@@ -260,7 +260,7 @@ class PublicEventsRepo:
         async with aiosqlite.connect(self.path) as db:
             await db.execute(
                 """
-                INSERT INTO ghostface_runtime (
+                INSERT INTO observer_runtime (
                     guild_id, active, channel_id, question_id, question_text,
                     accepted_answers_json, answer_match_mode, question_difficulty,
                     started_at, expires_at, message_id, winner_user_id, reward_settled_at
@@ -298,7 +298,7 @@ class PublicEventsRepo:
             )
             await db.commit()
 
-    async def list_pending_ghostface_rewards(self) -> list[dict[str, Any]]:
+    async def list_pending_observer_rewards(self) -> list[dict[str, Any]]:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             db.row_factory = aiosqlite.Row
@@ -307,33 +307,33 @@ class PublicEventsRepo:
                 SELECT guild_id, active, channel_id, question_id, question_text,
                        answer_match_mode, question_difficulty, started_at, expires_at,
                        message_id, winner_user_id, reward_settled_at
-                FROM ghostface_runtime
+                FROM observer_runtime
                 WHERE winner_user_id IS NOT NULL AND reward_settled_at IS NULL
                 """
             )
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
-    async def list_active_ghostface_states(self) -> list[dict[str, Any]]:
+    async def list_active_observer_states(self) -> list[dict[str, Any]]:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 """
                 SELECT guild_id, expires_at
-                FROM ghostface_runtime
+                FROM observer_runtime
                 WHERE active = 1
                 """
             )
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
-    async def claim_ghostface_winner(self, guild_id: int, winner_user_id: int) -> bool:
+    async def claim_observer_winner(self, guild_id: int, winner_user_id: int) -> bool:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             cursor = await db.execute(
                 """
-                UPDATE ghostface_runtime
+                UPDATE observer_runtime
                 SET active = 0,
                     winner_user_id = ?,
                     reward_settled_at = NULL
@@ -344,7 +344,7 @@ class PublicEventsRepo:
             await db.commit()
         return bool(cursor.rowcount)
 
-    async def mark_ghostface_reward_settled(
+    async def mark_observer_reward_settled(
         self,
         guild_id: int,
         winner_user_id: int,
@@ -354,7 +354,7 @@ class PublicEventsRepo:
         async with aiosqlite.connect(self.path) as db:
             cursor = await db.execute(
                 """
-                UPDATE ghostface_runtime
+                UPDATE observer_runtime
                 SET reward_settled_at = ?
                 WHERE guild_id = ?
                   AND winner_user_id = ?
@@ -365,8 +365,8 @@ class PublicEventsRepo:
             await db.commit()
         return bool(cursor.rowcount)
 
-    async def reset_ghostface_state(self, guild_id: int) -> None:
-        await self.set_ghostface_state(
+    async def reset_observer_state(self, guild_id: int) -> None:
+        await self.set_observer_state(
             guild_id,
             active=False,
             channel_id=None,
@@ -381,15 +381,15 @@ class PublicEventsRepo:
             winner_user_id=None,
         )
         async with aiosqlite.connect(self.path) as db:
-            await db.execute("DELETE FROM ghostface_hint_uses WHERE guild_id = ?", (guild_id,))
+            await db.execute("DELETE FROM observer_hint_uses WHERE guild_id = ?", (guild_id,))
             await db.commit()
 
-    async def increment_ghostface_hint_use(self, guild_id: int, user_id: int, question_id: str) -> int:
+    async def increment_observer_hint_use(self, guild_id: int, user_id: int, question_id: str) -> int:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             await db.execute(
                 """
-                INSERT INTO ghostface_hint_uses (guild_id, user_id, question_id, use_count)
+                INSERT INTO observer_hint_uses (guild_id, user_id, question_id, use_count)
                 VALUES (?, ?, ?, 1)
                 ON CONFLICT(guild_id, user_id, question_id) DO UPDATE SET
                     use_count = use_count + 1
@@ -399,7 +399,7 @@ class PublicEventsRepo:
             cursor = await db.execute(
                 """
                 SELECT use_count
-                FROM ghostface_hint_uses
+                FROM observer_hint_uses
                 WHERE guild_id = ? AND user_id = ? AND question_id = ?
                 """,
                 (guild_id, user_id, question_id),
@@ -571,13 +571,13 @@ class PublicEventsRepo:
             rows = await cursor.fetchall()
         return [{"user_id": int(user_id), "captures": int(captures)} for user_id, captures in rows]
 
-    async def get_ghostface_used_question_ids(self, guild_id: int) -> list[str]:
+    async def get_observer_used_question_ids(self, guild_id: int) -> list[str]:
         await self.init_db()
         async with aiosqlite.connect(self.path) as db:
             cursor = await db.execute(
                 """
                 SELECT used_question_ids_json
-                FROM ghostface_rotation
+                FROM observer_rotation
                 WHERE guild_id = ?
                 """,
                 (guild_id,),
@@ -588,13 +588,13 @@ class PublicEventsRepo:
         import json
         return [str(value) for value in json.loads(row[0])]
 
-    async def set_ghostface_used_question_ids(self, guild_id: int, question_ids: list[str]) -> None:
+    async def set_observer_used_question_ids(self, guild_id: int, question_ids: list[str]) -> None:
         await self.init_db()
         import json
         async with aiosqlite.connect(self.path) as db:
             await db.execute(
                 """
-                INSERT INTO ghostface_rotation (guild_id, used_question_ids_json)
+                INSERT INTO observer_rotation (guild_id, used_question_ids_json)
                 VALUES (?, ?)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     used_question_ids_json = excluded.used_question_ids_json

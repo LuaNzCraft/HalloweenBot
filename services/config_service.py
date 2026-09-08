@@ -304,13 +304,39 @@ class ConfigService:
                 for index, value in enumerate(self._list(scheduler, key, "config.public_events.scheduler")):
                     self._validate_time(value, f"config.public_events.scheduler.{key}[{index}]")
 
-        ghostface = self._mapping(public_events, "ghostface", "config.public_events")
-        self._boolean(ghostface, "enabled", "config.public_events.ghostface")
-        self._number(ghostface, "answer_timeout_seconds", "config.public_events.ghostface", minimum=1)
-        self._validate_weights(ghostface.get("round_type_weights"), "config.public_events.ghostface.round_type_weights")
-        question_sources = self._list(ghostface, "question_sources", "config.public_events.ghostface")
+        observer = self._mapping(public_events, "observer", "config.public_events")
+        self._boolean(observer, "enabled", "config.public_events.observer")
+        self._number(observer, "answer_timeout_seconds", "config.public_events.observer", minimum=1)
+        self._validate_weights(observer.get("round_type_weights"), "config.public_events.observer.round_type_weights")
+        question_sources = self._list(observer, "question_sources", "config.public_events.observer")
         if not question_sources or any(not isinstance(value, str) or not value.strip() for value in question_sources):
-            raise ConfigError("config.public_events.ghostface.question_sources: use uma lista de caminhos")
+            raise ConfigError("config.public_events.observer.question_sources: use uma lista de caminhos")
+        archives = self._mapping(observer, "archives", "config.public_events.observer")
+        self._boolean(archives, "enabled", "config.public_events.observer.archives")
+        archive_cache_directory = self._string(
+            archives,
+            "cache_directory",
+            "config.public_events.observer.archives",
+        )
+        archive_cache_path = (ROOT_DIR / archive_cache_directory).resolve()
+        if not archive_cache_path.is_relative_to((ROOT_DIR / "cache").resolve()):
+            raise ConfigError(
+                "config.public_events.observer.archives.cache_directory: precisa ficar dentro de cache/"
+            )
+        self._integer(
+            archives,
+            "max_message_length",
+            "config.public_events.observer.archives",
+            minimum=40,
+            maximum=1000,
+        )
+        self._integer(
+            archives,
+            "preview_timeout_seconds",
+            "config.public_events.observer.archives",
+            minimum=30,
+            maximum=900,
+        )
 
         candy_shower = self._mapping(public_events, "candy_shower", "config.public_events")
         self._boolean(candy_shower, "enabled", "config.public_events.candy_shower")

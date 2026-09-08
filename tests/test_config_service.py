@@ -74,6 +74,28 @@ class ConfigServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "config.effects.admin_mute_delete_messages"):
             self.service.reload()
 
+    def test_observer_archive_message_limit_is_validated(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["public_events"]["observer"]["archives"]["max_message_length"] = 1001
+        self._write(invalid)
+
+        with self.assertRaisesRegex(
+            ConfigError,
+            "config.public_events.observer.archives.max_message_length",
+        ):
+            self.service.reload()
+
+    def test_observer_archive_cache_must_stay_inside_cache(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["public_events"]["observer"]["archives"]["cache_directory"] = "data/archives"
+        self._write(invalid)
+
+        with self.assertRaisesRegex(
+            ConfigError,
+            "config.public_events.observer.archives.cache_directory",
+        ):
+            self.service.reload()
+
     def test_duplicate_yaml_keys_are_rejected(self) -> None:
         self.path.write_text(
             CONFIG_PATH.read_text(encoding="utf-8") + "\nchat_candy: {}\n",

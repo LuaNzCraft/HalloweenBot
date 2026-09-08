@@ -127,11 +127,11 @@ class UsersRepoAdminTests(unittest.IsolatedAsyncioTestCase):
 
 
 class PublicEventRuntimeTests(unittest.IsolatedAsyncioTestCase):
-    async def test_ghostface_start_returns_a_failure_reason_without_channels(self) -> None:
+    async def test_observer_start_returns_a_failure_reason_without_channels(self) -> None:
         cog = SimpleNamespace(_get_event_channels=AsyncMock(return_value=[]))
         guild = SimpleNamespace(id=1)
 
-        ok, reason = await PublicEventRuntimeService().start_ghostface(cog, guild, {})
+        ok, reason = await PublicEventRuntimeService().start_observer(cog, guild, {})
 
         self.assertFalse(ok)
         self.assertIn("canal", reason.lower())
@@ -165,7 +165,7 @@ class EventoLifecycleTests(unittest.IsolatedAsyncioTestCase):
         cog = object.__new__(EventoCog)
         cog.admin_repo = SimpleNamespace(set_runtime=AsyncMock())
         cog.public_events_repo = SimpleNamespace(
-            reset_ghostface_state=AsyncMock(),
+            reset_observer_state=AsyncMock(),
             reset_spider_state=AsyncMock(),
         )
         cog.julgamento_repo = SimpleNamespace(reset_runtime=AsyncMock())

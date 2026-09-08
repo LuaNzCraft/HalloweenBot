@@ -13,10 +13,12 @@ from discord.ext import commands
 from repositories.admin_repo import AdminRepo
 from repositories.effects_repo import EffectsRepo
 from repositories.julgamento_repo import JulgamentoRepo
+from repositories.observer_archives_repo import ObserverArchivesRepo
 from repositories.public_events_repo import PublicEventsRepo
 from services.audit_service import AuditService
 from services.config_service import get_public_events_config
-from services.ghostface_question_catalog import GhostfaceQuestionCatalog
+from services.observer_question_catalog import ObserverQuestionCatalog
+from services.observer_archive_service import ObserverArchiveService
 from services.inventory_service import InventoryService
 from services.i18n_service import I18nService
 from services.items_texts import ItemsTextService
@@ -55,14 +57,15 @@ class ItemsRuntimeService:
         self.mission_service = mission_service
         self.effects_config = effects_config
         self.texts = texts
-        self.ghostface_catalog = GhostfaceQuestionCatalog(ROOT_DIR)
+        self.observer_catalog = ObserverQuestionCatalog(ROOT_DIR)
+        self.observer_archives_repo = ObserverArchivesRepo()
 
     def load_public_events_config(self) -> dict:
         return get_public_events_config()
 
-    def load_ghostface_questions(self) -> list[dict]:
+    def load_observer_questions(self) -> list[dict]:
         config = self.load_public_events_config()
-        return self.ghostface_catalog.load(dict(config.get("ghostface") or {}))
+        return self.observer_catalog.load(dict(config.get("observer") or {}))
 
     def parse_dt(self, value: str | None) -> datetime | None:
         if not value:
@@ -83,20 +86,20 @@ class ItemsRuntimeService:
         ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
         return " ".join(ascii_text.lower().split())
 
-    def find_ghostface_question(
+    def find_observer_question(
         self,
         *,
         question_id: str | None,
         question_text: str | None,
     ) -> dict | None:
-        questions = self.load_ghostface_questions()
-        question = self.ghostface_catalog.find_by_id(questions, question_id)
+        questions = self.load_observer_questions()
+        question = self.observer_catalog.find_by_id(questions, question_id)
         if question is not None:
             return question
-        return self.ghostface_catalog.find_by_text(questions, question_text, self.normalize_text)
+        return self.observer_catalog.find_by_text(questions, question_text, self.normalize_text)
 
-    def find_ghostface_question_by_text(self, question_text: str) -> dict | None:
-        return self.find_ghostface_question(question_id=None, question_text=question_text)
+    def find_observer_question_by_text(self, question_text: str) -> dict | None:
+        return self.find_observer_question(question_id=None, question_text=question_text)
 
     def select_hint_answer(self, question: dict, locale: str) -> str:
         localized_keys = (
@@ -192,9 +195,9 @@ class ItemsRuntimeService:
         if julgamento_runtime.get("active"):
             return self.i18n.t(locale, "mute.blocked.carousel")
 
-        ghostface_state = await self.public_events_repo.get_ghostface_state(guild_id)
-        if ghostface_state.get("active"):
-            return self.i18n.t(locale, "mute.blocked.ghostface")
+        observer_state = await self.public_events_repo.get_observer_state(guild_id)
+        if observer_state.get("active"):
+            return self.i18n.t(locale, "mute.blocked.observer")
 
         public_cfg = self.load_public_events_config()
         scheduler_cfg = dict(public_cfg.get("scheduler") or {})
@@ -205,12 +208,12 @@ class ItemsRuntimeService:
         scheduler_state = await self.public_events_repo.get_state(guild_id)
         next_event_name = str(scheduler_state.get("next_event_name") or "").strip().lower()
         next_run_at = self.parse_dt(scheduler_state.get("next_run_at"))
-        if next_event_name != "ghostface" or next_run_at is None:
+        if next_event_name != "observador" or next_run_at is None:
             return None
 
         announce_starts_at = next_run_at - timedelta(minutes=announce_minutes_before)
         if announce_starts_at <= now < next_run_at:
-            return self.i18n.t(locale, "mute.blocked.ghostface_soon")
+            return self.i18n.t(locale, "mute.blocked.observer_soon")
         return None
 
     async def get_interference_guardrail_reason(self, guild_id: int, locale: str) -> str | None:
@@ -236,12 +239,12 @@ class ItemsRuntimeService:
                 return self.i18n.t(locale, "interference.blocked.spiders_soon")
         return None
 
-    async def handle_ghostface_hint(self, interaction: discord.Interaction, locale: str) -> None:
+    async def handle_observer_hint(self, interaction: discord.Interaction, locale: str) -> None:
         if interaction.guild is None:
-            await interaction.response.send_message(self.i18n.t(locale, "ghostface_hint.guild_only"), ephemeral=True)
+            await interaction.response.send_message(self.i18n.t(locale, "observer_hint.guild_only"), ephemeral=True)
             return
 
-        state = await self.public_events_repo.get_ghostface_state(interaction.guild.id)
+        state = await self.public_events_repo.get_observer_state(interaction.guild.id)
         expires_at = self.parse_dt(state.get("expires_at"))
         if (
             not state.get("active")
@@ -249,44 +252,51 @@ class ItemsRuntimeService:
             or expires_at is None
             or expires_at <= datetime.now(timezone.utc)
         ):
-            await interaction.response.send_message(self.i18n.t(locale, "ghostface_hint.no_active"), ephemeral=True)
+            await interaction.response.send_message(self.i18n.t(locale, "observer_hint.no_active"), ephemeral=True)
             return
 
-        question = self.find_ghostface_question(
+        question = self.find_observer_question(
             question_id=state.get("question_id"),
             question_text=state.get("question_text"),
         )
         if question is None:
-            await interaction.response.send_message(self.i18n.t(locale, "ghostface_hint.unavailable"), ephemeral=True)
+            archive = await self.observer_archives_repo.get_by_question_id(
+                interaction.guild.id,
+                state.get("question_id"),
+            )
+            if archive is not None:
+                question = ObserverArchiveService.archive_to_question(archive)
+        if question is None:
+            await interaction.response.send_message(self.i18n.t(locale, "observer_hint.unavailable"), ephemeral=True)
             return
 
         user = await self.inventory_service.users_repo.get_user(interaction.user.id)
         inventory = user.get("inventory", {})
-        if int(inventory.get("ghostface_hint", 0)) <= 0:
+        if int(inventory.get("observer_hint", 0)) <= 0:
             await interaction.response.send_message(self.i18n.t(locale, "items.not_owned"), ephemeral=True)
             return
 
         answer = self.select_hint_answer(question, locale)
         if not answer:
-            await interaction.response.send_message(self.i18n.t(locale, "ghostface_hint.unavailable"), ephemeral=True)
+            await interaction.response.send_message(self.i18n.t(locale, "observer_hint.unavailable"), ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
         try:
-            await self.inventory_service.users_repo.remove_inventory_item(interaction.user.id, "ghostface_hint", 1)
+            await self.inventory_service.users_repo.remove_inventory_item(interaction.user.id, "observer_hint", 1)
         except ValueError:
             await interaction.followup.send(self.i18n.t(locale, "items.not_owned"), ephemeral=True)
             return
 
         question_id = str(question.get("id") or "")
-        use_count = await self.public_events_repo.increment_ghostface_hint_use(
+        use_count = await self.public_events_repo.increment_observer_hint_use(
             interaction.guild.id,
             interaction.user.id,
             question_id,
         )
         extra_hint = self.build_hint_extra(question, locale)
         extra_reveals = 0 if extra_hint else min(max(0, use_count - 1), 2)
-        embed = self.texts.ghostface_hint_embed(
+        embed = self.texts.observer_hint_embed(
             locale,
             word_count=len(answer.split()),
             initials=self.build_hint_initials(answer),
@@ -303,9 +313,9 @@ class ItemsRuntimeService:
             guild_id=interaction.guild.id,
             actor_id=interaction.user.id,
             target_id=None,
-            action="item.ghostface_hint.used",
+            action="item.observer_hint.used",
             payload={
-                "item": "ghostface_hint",
+                "item": "observer_hint",
                 "question_id": question_id,
                 "use_count": use_count,
                 "extra_reveals": extra_reveals,
@@ -1105,8 +1115,6 @@ class ItemsRuntimeService:
         now = datetime.now(timezone.utc)
         active_effects = await self.effects_repo.list_active_effects(effect_type="mute")
         for effect in active_effects:
-            if (effect.get("payload") or {}).get("mode") != "delete_messages":
-                continue
             expires_at = self.parse_dt(effect.get("expires_at"))
             if expires_at is None or expires_at <= now:
                 await self.effects_repo.deactivate_effect(int(effect["id"]))

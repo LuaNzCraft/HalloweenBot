@@ -192,13 +192,13 @@ class PublicEventTextsService:
                 embed.add_field(name="Vagoes", value="\n".join(lines), inline=False)
         return embed
 
-    def build_ghostface_announcement_embed(self, color: discord.Color, starts_at: datetime) -> discord.Embed:
+    def build_observer_announcement_embed(self, color: discord.Color, starts_at: datetime) -> discord.Embed:
         embed = discord.Embed(
-            title="*telefone tocando...*",
+            title="📹 *sinal de gravacao detectado...*",
             description=(
-                "Uma ligacao esta chegando.\n\n"
-                "Vou te fazer uma pergunta. Primeira resposta certa no chat vence.\n"
-                "Nao me faca esperar."
+                "O Observador vai abrir um novo arquivo.\n\n"
+                "Uma pergunta sera registrada. A primeira resposta certa no chat vence.\n"
+                "Ele ja esta olhando."
             ),
             color=color,
         )
@@ -206,7 +206,7 @@ class PublicEventTextsService:
         embed.add_field(name="Falta", value=discord.utils.format_dt(starts_at, style="R"), inline=False)
         return embed
 
-    def build_ghostface_question_embed(
+    def build_observer_question_embed(
         self,
         color: discord.Color,
         *,
@@ -232,7 +232,7 @@ class PublicEventTextsService:
             description_lines.append(f"\n> Revele e digite: {display_text}")
 
         embed = discord.Embed(
-            title="📞 Ghostface esta na linha",
+            title="📹 O Observador esta gravando",
             description="\n".join(description_lines),
             color=color,
         )
@@ -253,10 +253,10 @@ class PublicEventTextsService:
         )
         if attachment_filename:
             embed.set_image(url=f"attachment://{attachment_filename}")
-        embed.set_footer(text="Responda antes que a linha morra.")
+        embed.set_footer(text="Responda antes que a gravacao seja encerrada.")
         return embed
 
-    def build_ghostface_translation_embed(
+    def build_observer_translation_embed(
         self,
         color: discord.Color,
         *,
@@ -281,7 +281,7 @@ class PublicEventTextsService:
             description_lines.append(f"\n> Reveal and type: {display_text}")
 
         embed = discord.Embed(
-            title="📞 Ghostface is on the line",
+            title="📹 The Observer is recording",
             description="\n".join(description_lines),
             color=color,
         )
@@ -303,7 +303,7 @@ class PublicEventTextsService:
         embed.set_footer(text="This translation is private to you.")
         return embed
 
-    def build_ghostface_timeout_embed(
+    def build_observer_timeout_embed(
         self,
         color: discord.Color,
         *,
@@ -311,22 +311,22 @@ class PublicEventTextsService:
         answer_value: str,
     ) -> discord.Embed:
         embed = discord.Embed(
-            title="*linha morta*",
-            description="Ninguem atendeu a tempo. A chamada caiu.",
+            title="📼 *gravacao encerrada*",
+            description="Ninguem respondeu antes de o arquivo ser fechado.",
             color=color,
         )
         embed.add_field(name=answer_label, value=answer_value, inline=False)
-        embed.set_footer(text="Vou ligar de novo.")
+        embed.set_footer(text="O Observador continua atento.")
         return embed
 
-    def build_ghostface_winner_embed(self, color: discord.Color, winner_mention: str, summary: str) -> discord.Embed:
+    def build_observer_winner_embed(self, color: discord.Color, winner_mention: str, summary: str) -> discord.Embed:
         embed = discord.Embed(
             title="Resposta certa.",
             description=f"{winner_mention} foi o primeiro a acertar.",
             color=color,
         )
         embed.add_field(name="Recompensas", value=summary, inline=False)
-        embed.set_footer(text="Dessa vez voce sobreviveu.")
+        embed.set_footer(text="Voce escapou do foco desta vez.")
         return embed
 
     def build_tempo_unavailable_embed(self, title: str, description: str) -> discord.Embed:

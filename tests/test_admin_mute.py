@@ -164,5 +164,42 @@ class AdminMuteApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(runtime.texts.mute_applied_embed.call_args.kwargs["delete_messages"])
 
 
+class MuteObserverGuardrailTests(unittest.IsolatedAsyncioTestCase):
+    async def test_blocks_mute_before_observer(self) -> None:
+        runtime = make_runtime()
+        runtime.julgamento_repo = SimpleNamespace(get_runtime=AsyncMock(return_value={"active": False}))
+        runtime.public_events_repo = SimpleNamespace(
+            get_observer_state=AsyncMock(return_value={"active": False}),
+            get_state=AsyncMock(),
+        )
+        runtime.i18n = SimpleNamespace(t=MagicMock(side_effect=lambda _locale, key, **_kwargs: key))
+        runtime.load_public_events_config = MagicMock(
+            return_value={"scheduler": {"announce_minutes_before": 5}}
+        )
+
+        runtime.public_events_repo.get_state.return_value = {
+            "next_event_name": "Observador",
+            "next_run_at": (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(),
+        }
+
+        reason = await runtime.get_mute_guardrail_reason(1, "pt-BR")
+
+        self.assertEqual(reason, "mute.blocked.observer_soon")
+
+    async def test_cleanup_deactivates_expired_regular_discord_mutes(self) -> None:
+        runtime = make_runtime()
+        runtime.effects_repo.list_active_effects.return_value = [
+            {
+                "id": 42,
+                "expires_at": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+                "payload": {"mode": "discord_timeout"},
+            }
+        ]
+
+        await runtime.cleanup_expired_admin_mutes()
+
+        runtime.effects_repo.deactivate_effect.assert_awaited_once_with(42)
+
+
 if __name__ == "__main__":
     unittest.main()

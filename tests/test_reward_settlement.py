@@ -166,9 +166,9 @@ class PendingEventRewardTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await repo.mark_reward_settled(int(spawn_id), 40, now + timedelta(seconds=2)))
         self.assertEqual(await repo.list_pending_reward_spawns(), [])
 
-    async def test_ghostface_winner_remains_pending_until_marked_settled(self) -> None:
+    async def test_observer_winner_remains_pending_until_marked_settled(self) -> None:
         repo = PublicEventsRepo(self.db_path)
-        await repo.set_ghostface_state(
+        await repo.set_observer_state(
             10,
             active=False,
             channel_id=20,
@@ -183,14 +183,14 @@ class PendingEventRewardTests(unittest.IsolatedAsyncioTestCase):
             winner_user_id=40,
         )
 
-        pending = await repo.list_pending_ghostface_rewards()
+        pending = await repo.list_pending_observer_rewards()
         self.assertEqual([(row["guild_id"], row["winner_user_id"]) for row in pending], [(10, 40)])
-        self.assertTrue(await repo.mark_ghostface_reward_settled(10, 40, "2026-09-06T20:00:02+00:00"))
-        self.assertEqual(await repo.list_pending_ghostface_rewards(), [])
+        self.assertTrue(await repo.mark_observer_reward_settled(10, 40, "2026-09-06T20:00:02+00:00"))
+        self.assertEqual(await repo.list_pending_observer_rewards(), [])
 
-    async def test_only_one_concurrent_ghostface_winner_is_claimed(self) -> None:
+    async def test_only_one_concurrent_observer_winner_is_claimed(self) -> None:
         repo = PublicEventsRepo(self.db_path)
-        await repo.set_ghostface_state(
+        await repo.set_observer_state(
             10,
             active=True,
             channel_id=20,
@@ -206,12 +206,12 @@ class PendingEventRewardTests(unittest.IsolatedAsyncioTestCase):
         )
 
         first, second = await asyncio.gather(
-            repo.claim_ghostface_winner(10, 40),
-            PublicEventsRepo(self.db_path).claim_ghostface_winner(10, 41),
+            repo.claim_observer_winner(10, 40),
+            PublicEventsRepo(self.db_path).claim_observer_winner(10, 41),
         )
 
         self.assertEqual(sum((first, second)), 1)
-        state = await repo.get_ghostface_state(10)
+        state = await repo.get_observer_state(10)
         self.assertFalse(state["active"])
         self.assertIn(state["winner_user_id"], {40, 41})
         self.assertIsNone(state["reward_settled_at"])
@@ -288,7 +288,7 @@ class EventRewardIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.users_repo.get_user(10))["candies"], 5)
         self.assertEqual(await repo.list_pending_reward_spawns(), [])
 
-    async def test_ghostface_retry_preserves_reward_and_correct_answer_counter(self) -> None:
+    async def test_observer_retry_preserves_reward_and_correct_answer_counter(self) -> None:
         cog = object.__new__(PublicEventsCog)
         cog.users_repo = self.users_repo
         cog.i18n = self.i18n
@@ -303,8 +303,8 @@ class EventRewardIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "difficulty_defaults": {"easy": {"reward_count": 2, "allow_baskets": True}},
         }
 
-        first = await cog._grant_ghostface_rewards(10, config, 20, "easy", "ghostface:20:event-1")
-        retried = await cog._grant_ghostface_rewards(10, {}, 20, "easy", "ghostface:20:event-1")
+        first = await cog._grant_observer_rewards(10, config, 20, "easy", "observer:20:event-1")
+        retried = await cog._grant_observer_rewards(10, {}, 20, "easy", "observer:20:event-1")
 
         self.assertEqual(first, retried)
         user = await self.users_repo.get_user(10)

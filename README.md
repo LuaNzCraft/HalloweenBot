@@ -11,7 +11,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Tabuleiro animado com casas de doce, travessura, maldição e recompensas por volta.
 - Missões pessoais, globais e de evento.
 - Perfil, leaderboard e sistema de Doce ou Travessura entre jogadores.
-- Eventos públicos como Ghostface, Chuva de Doces, Trem Fantasma e Caça aos Doces.
+- Eventos públicos como Observador, Arquivos do Observador, Chuva de Doces, Trem Fantasma e Caça aos Doces.
 - Carrossel competitivo com inscrições, espectadores, rodadas e premiação.
 - Efeitos temporários com expiração, persistência e recuperação após reinício.
 - Localização em português do Brasil e inglês.
@@ -57,6 +57,8 @@ Depois de adicionar o bot ao servidor, use os comandos administrativos:
 - `/setup julgamento`: cria ou atualiza a estrutura do Carrossel.
 - `/setup ver`: mostra a configuração atual da guild.
 - `/evento`: inicia, pausa ou encerra o evento.
+- `/observador arquivar_mensagem`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
+- `/observador listar_arquivos` e `/observador definir_status`: administram a pool de mensagens arquivadas.
 - `/leaderboard`: publica ou atualiza os rankings.
 
 Os IDs definidos por `/setup` são persistidos no SQLite e têm prioridade sobre `guild_defaults`.

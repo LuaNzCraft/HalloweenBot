@@ -398,9 +398,9 @@ baskets:
         grant_id: interferencia
         weight: 2
         amount: 1
-      - id: ghostface_hint
+      - id: observer_hint
         grant_type: item
-        grant_id: ghostface_hint
+        grant_id: observer_hint
         weight: 1
         amount: 1
       - id: ticket_carrossel
@@ -471,9 +471,9 @@ baskets:
         grant_id: interferencia
         weight: 4
         amount: 1
-      - id: ghostface_hint
+      - id: observer_hint
         grant_type: item
-        grant_id: ghostface_hint
+        grant_id: observer_hint
         weight: 2
         amount: 1
       - id: ticket_carrossel
@@ -521,9 +521,9 @@ baskets:
         grant_id: interferencia
         weight: 9
         amount: 1
-      - id: ghostface_hint
+      - id: observer_hint
         grant_type: item
-        grant_id: ghostface_hint
+        grant_id: observer_hint
         weight: 6
         amount: 1
       - id: ticket_carrossel
@@ -596,10 +596,10 @@ items:
     implemented: true
     grantable: true
     usable: true
-  ghostface_hint:
-    name: Dica do Ghostface
+  observer_hint:
+    name: Dica do Observador
     emoji: 🔎
-    description: Entrega uma dica privada sobre a pergunta atual do Ghostface.
+    description: Entrega uma dica privada sobre a pergunta atual do Observador.
     kind: consumable
     requires_target: false
     implemented: true
@@ -731,19 +731,25 @@ public_events:
     announce_minutes_before: 1
     pause_after_hour: 0
     resume_hour: 8
-  # Perguntas, proporcao de imagens e recompensas do Ghostface.
-  ghostface:
+  # Perguntas, proporcao de imagens e recompensas do Observador.
+  observer:
     enabled: true
-    question_source: content/halloween/ghostface_questions.json
+    question_source: content/halloween/observer_questions.json
     question_sources:
-    - content/halloween/ghostface_questions.json
-    - content/halloween/ghostface_movie_questions.json
+    - content/halloween/observer_questions.json
+    - content/halloween/observer_movie_questions.json
     round_type_weights:
-      text: 70
-      movie_image: 30
+      text: 60
+      movie_image: 25
+      chat_quote: 15
     answer_timeout_seconds: 90
-    webhook_name: Ghostface
-    webhook_avatar_path: Assets/Ghostface.jpg
+    webhook_name: Observador
+    webhook_avatar_path: Assets/Observador.png
+    archives:
+      enabled: true
+      cache_directory: cache/observer_archives
+      max_message_length: 500
+      preview_timeout_seconds: 300
     difficulty_defaults:
       easy:
         reward_count: 2
@@ -817,10 +823,10 @@ carousel:
   signup_seconds: null
   spectator_minutes_after_end: 3
   answer_timeout_seconds: 25
-  question_source: content/halloween/ghostface_questions.json
+  question_source: content/halloween/observer_questions.json
   question_sources:
-  - content/halloween/ghostface_questions.json
-  - content/halloween/ghostface_movie_questions.json
+  - content/halloween/observer_questions.json
+  - content/halloween/observer_movie_questions.json
   round_type_weights:
     text: 65
     movie_image: 35
