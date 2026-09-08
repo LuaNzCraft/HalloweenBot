@@ -1,0 +1,845 @@
+# Halloween Bot - configuracao central
+#
+# Edite este arquivo e use /setup recarregar_config para aplicar as mudancas.
+# Perguntas, traducoes e missoes extensas continuam na pasta content/.
+# IDs de canais e cargos configurados por servidor continuam no SQLite.
+
+config_version: 1
+
+# Valores iniciais. Canais e cargos alterados com /setup ficam salvos por servidor no SQLite.
+guild_defaults:
+  leaderboard_channel_id: null
+  log_channel_id: null
+  event_channel_ids: []
+  julgamento_channel_id: null
+  julgamento_thread_id: null
+  julgamento_base_message_id: null
+  shop_role_id: null
+  board_100_role_id: null
+  notification_role_id: null
+  cinefilo_role_id: null
+  julgamento_active_role_id: null
+  julgamento_muted_role_id: null
+  julgamento_spectator_role_id: null
+# Conquistas e marcos permanentes do evento.
+achievements:
+  cinefilo_correct_answers_required: 50
+  generosity_candies_milestones:
+  - target: 140
+    rewards:
+      cesta_abobora: 1
+  - target: 420
+    rewards:
+      cesta_abobora: 2
+      cesta_doce_epica: 1
+  - target: 840
+    rewards:
+      cesta_doce_epica: 2
+      cesta_doce_amaldicoada: 1
+  - target: 1400
+    rewards:
+      cesta_doce_epica: 3
+      cesta_doce_amaldicoada: 2
+# Duracao e comportamento dos itens de travessura.
+effects:
+  mute_duration_seconds: 60
+  # Administradores nao podem receber timeout do Discord. Quando ativo, o bot
+  # apaga as novas mensagens deles durante o mute (requer Gerenciar Mensagens).
+  admin_mute_delete_messages: true
+  interference_duration_seconds: 600
+  switch_duration_seconds: 900
+  switch_nickname_pool:
+  - Vampiro Vegano
+  - Pulguento
+  - Morcego Calvo
+  - Abobora Amassada
+  - Lacaio de {actor_name}
+  - Servo de {actor_name}
+  - Mascote de {actor_name}
+  - Mini Monstro
+  - Fantasma do RH
+  - Criatura de Quintal
+# Regras do pedido publico de Doce ou Travessura.
+profile_requests:
+  candy_amount: 10
+  trick_coins_amount: 5
+  daily_requests_per_pair: 1
+  request_timeout_seconds: 1800
+  active_window_minutes: 30
+  ignore_cooldown_seconds: 180
+# Trem Fantasma: bonus coletivo disparado pelo movimento do chat.
+chat_bonus:
+  enabled: true
+  threshold_messages: 100
+  window_minutes: 10
+  min_message_length: 3
+  button_timeout_seconds: 30
+  options:
+  - id: candies
+    label: Doces
+    emoji: <:sweetcoins:1496365065773781033>
+    rewards:
+    - grant_type: currency
+      grant_id: candies
+      amount: 30
+  - id: tricks
+    label: Travessuras
+    emoji: <:trickcoins:1496364971398008932>
+    rewards:
+    - grant_type: currency
+      grant_id: trick_coins
+      amount: 30
+# Doces no Chat: disputa curta com uma tentativa por jogador.
+chat_candy:
+  enabled: true
+  emoji_ids:
+  - 1496905501349515476
+  - 1496905441488277574
+  - 1496905835237085245
+  - 1496906705219617030
+  spawn_chance_percent: 60
+  spawn_cooldown_seconds: 30
+  capture_seconds: 15
+  min_message_length: 3
+  min_options: 3
+  max_options: 4
+  reward_candies: 1
+  max_spawns_per_day: 150
+  pause_during_public_events: true
+# Tabuleiro, casas, imagens e recompensas.
+board:
+  total_tiles: 16
+  assets:
+    board_image_candidates:
+    - board.png
+    - tabuleiro_base.png
+    - tabuleiro.png
+    token_image_candidates:
+    - optimized/personagem.png
+    - novoreze/personagem.png
+    - token.png
+    - personagem.png
+    result_window: WindowFinal.png
+    dice_faces:
+      '1': novoreze/dado1.png
+      '2': novoreze/dado2.png
+      '3': novoreze/dado3.png
+      '4': novoreze/dado4.png
+      '5': novoreze/dado5.png
+      '6': novoreze/dado6.png
+    result_icons:
+      Candy: novoreze/Doce.png
+      Trap: novoreze/Maldição.png
+      Trick: novoreze/Travessura.png
+      Dice: novoreze/Dado.png
+      Basket: novoreze/Cesta.png
+      Start: novoreze/Dado.png
+  tile_types:
+    '0': Start
+    '1': Dice
+    '2': Candy
+    '3': Candy
+    '4': Basket
+    '5': Candy
+    '6': Trap
+    '7': Trick
+    '8': Dice
+    '9': Candy
+    '10': Candy
+    '11': Trap
+    '12': Basket
+    '13': Trick
+    '14': Trap
+    '15': Basket
+  coordinates:
+    '0':
+    - 930
+    - 914
+    '1':
+    - 715
+    - 913
+    '2':
+    - 510
+    - 922
+    '3':
+    - 310
+    - 922
+    '4':
+    - 99
+    - 919
+    '5':
+    - 96
+    - 726
+    '6':
+    - 104
+    - 506
+    '7':
+    - 96
+    - 300
+    '8':
+    - 98
+    - 110
+    '9':
+    - 316
+    - 110
+    '10':
+    - 518
+    - 108
+    '11':
+    - 715
+    - 104
+    '12':
+    - 919
+    - 108
+    '13':
+    - 921
+    - 285
+    '14':
+    - 921
+    - 512
+    '15':
+    - 926
+    - 715
+  result_messages:
+    Candy: Voce recebeu Doce
+    Trap: Voce recebeu Maldicao
+    Trick: Voce recebeu Travessura
+    Dice: Voce recebeu Dado
+    Basket: Voce recebeu Cesta
+    Start: Voce voltou ao inicio
+  trap_item_rewards:
+  - mute
+  - switch
+  - interferencia
+  rewards:
+    Candy:
+      grant_type: currency
+      grant_id: candies
+      base_min: 12
+      base_max: 28
+      per_lap_bonus: 1
+      max_bonus_laps: 12
+    Trick:
+      grant_type: currency
+      grant_id: trick_coins
+      base_min: 4
+      base_max: 10
+      per_lap_bonus: 1
+      max_bonus_laps: 10
+    Dice:
+      grant_type: currency
+      grant_id: dice_count
+      amount: 1
+    Basket:
+      grant_type: item
+      grant_id: cesta_abobora
+      amount: 1
+    Trap:
+      grant_type: curse_pool
+      pool:
+      - kind: lose_currency
+        currency: candies
+        amount: 7
+        weight: 36
+      - kind: lose_currency
+        currency: dice_count
+        amount: 1
+        weight: 4
+      - kind: self_switch
+        duration_seconds: 180
+        weight: 15
+      - kind: self_interference
+        duration_seconds: 180
+        weight: 12
+      - kind: self_mute
+        duration_seconds: 60
+        weight: 6
+      - kind: blessing_item
+        item_pool:
+        - mute
+        - switch
+        - interferencia
+        amount: 1
+        weight: 10
+    Start:
+      grant_type: none
+  lap_milestones:
+    '10':
+      candies: 220
+      dice_count: 2
+      xp_bank: 120
+    '20':
+      candies: 320
+      trick_coins: 35
+      dice_count: 2
+      interferencia: 1
+      xp_bank: 220
+    '30':
+      candies: 420
+      dice_count: 3
+      interferencia: 1
+      xp_bank: 320
+    '40':
+      candies: 520
+      trick_coins: 50
+      interferencia: 1
+      xp_bank: 450
+    '50':
+      candies: 650
+      dice_count: 4
+      xp_bank: 600
+    '60':
+      candies: 780
+      trick_coins: 70
+      dice_count: 4
+      interferencia: 1
+      xp_bank: 800
+    '70':
+      candies: 920
+      dice_count: 5
+      xp_bank: 1000
+    '80':
+      candies: 1080
+      trick_coins: 90
+      dice_count: 5
+      interferencia: 1
+      xp_bank: 1250
+    '90':
+      candies: 1280
+      xp_bank: 1600
+    '100':
+      candies: 1650
+      trick_coins: 140
+      dice_count: 7
+      cesta_abobora: 10
+      cesta_doce_epica: 7
+      cesta_doce_amaldicoada: 5
+      xp_bank: 2200
+    '200':
+      candies: 1500
+      trick_coins: 120
+      dice_count: 6
+      cesta_abobora: 10
+      cesta_doce_epica: 7
+      cesta_doce_amaldicoada: 5
+      xp_bank: 1800
+  recurring_basket_rewards:
+  - every_laps: 1
+    item_id: cesta_abobora
+    amount: 1
+    exclude_multiples_of:
+    - 5
+    - 10
+  - every_laps: 5
+    item_id: cesta_doce_epica
+    amount: 1
+    exclude_multiples_of:
+    - 10
+  - every_laps: 10
+    item_id: cesta_doce_amaldicoada
+    amount: 1
+# Ordem de abertura e tabelas de recompensa das cestas.
+baskets:
+  open_priority:
+  - cesta_doce_amaldicoada
+  - cesta_doce_epica
+  - cesta_abobora
+  reward_pools:
+    cesta_abobora:
+      roll_count: 1
+      rewards:
+      - id: candies
+        grant_type: currency
+        grant_id: candies
+        weight: 45
+        min_amount: 15
+        max_amount: 40
+      - id: trick_coins
+        grant_type: currency
+        grant_id: trick_coins
+        weight: 22
+        min_amount: 4
+        max_amount: 12
+      - id: dice_count
+        grant_type: currency
+        grant_id: dice_count
+        weight: 8
+        amount: 1
+      - id: xp_bank
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 12
+        min_amount: 80
+        max_amount: 150
+      - id: candies_and_tricks
+        grant_type: currency_bundle
+        weight: 10
+        candies_min_amount: 12
+        candies_max_amount: 28
+        trick_coins_min_amount: 3
+        trick_coins_max_amount: 8
+      - id: cesta_bonus
+        grant_type: item
+        grant_id: cesta_doce_epica
+        weight: 4
+        amount: 1
+      - id: mute
+        grant_type: item
+        grant_id: mute
+        weight: 3
+        amount: 1
+      - id: switch
+        grant_type: item
+        grant_id: switch
+        weight: 3
+        amount: 1
+      - id: interferencia
+        grant_type: item
+        grant_id: interferencia
+        weight: 2
+        amount: 1
+      - id: ghostface_hint
+        grant_type: item
+        grant_id: ghostface_hint
+        weight: 1
+        amount: 1
+      - id: ticket_carrossel
+        grant_type: item
+        grant_id: ticket_carrossel
+        weight: 1
+        amount: 1
+    cesta_doce_epica:
+      roll_count: 2
+      rewards:
+      - id: candies
+        grant_type: currency
+        grant_id: candies
+        weight: 8
+        min_amount: 25
+        max_amount: 55
+      - id: trick_coins
+        grant_type: currency
+        grant_id: trick_coins
+        weight: 18
+        min_amount: 8
+        max_amount: 20
+      - id: dice_count
+        grant_type: currency
+        grant_id: dice_count
+        weight: 4
+        amount: 1
+      - id: xp_bank
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 5
+        min_amount: 80
+        max_amount: 150
+      - id: xp_bank_bonus
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 2
+        amount: 2500
+      - id: xp_bank_jackpot
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 1
+        amount: 5000
+      - id: candies_and_tricks
+        grant_type: currency_bundle
+        weight: 4
+        candies_min_amount: 18
+        candies_max_amount: 36
+        trick_coins_min_amount: 6
+        trick_coins_max_amount: 14
+      - id: cesta_bonus
+        grant_type: item
+        grant_id: cesta_doce_amaldicoada
+        weight: 5
+        amount: 1
+      - id: mute
+        grant_type: item
+        grant_id: mute
+        weight: 5
+        amount: 1
+      - id: switch
+        grant_type: item
+        grant_id: switch
+        weight: 5
+        amount: 1
+      - id: interferencia
+        grant_type: item
+        grant_id: interferencia
+        weight: 4
+        amount: 1
+      - id: ghostface_hint
+        grant_type: item
+        grant_id: ghostface_hint
+        weight: 2
+        amount: 1
+      - id: ticket_carrossel
+        grant_type: item
+        grant_id: ticket_carrossel
+        weight: 2
+        amount: 1
+    cesta_doce_amaldicoada:
+      roll_count: 2
+      rewards:
+      - id: trick_coins
+        grant_type: currency
+        grant_id: trick_coins
+        weight: 24
+        min_amount: 10
+        max_amount: 25
+      - id: xp_bank
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 14
+        min_amount: 1000
+        max_amount: 2000
+      - id: xp_bank_bonus
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 2
+        amount: 5000
+      - id: xp_bank_jackpot
+        grant_type: currency
+        grant_id: xp_bank
+        weight: 1
+        amount: 10000
+      - id: mute
+        grant_type: item
+        grant_id: mute
+        weight: 10
+        amount: 1
+      - id: switch
+        grant_type: item
+        grant_id: switch
+        weight: 10
+        amount: 1
+      - id: interferencia
+        grant_type: item
+        grant_id: interferencia
+        weight: 9
+        amount: 1
+      - id: ghostface_hint
+        grant_type: item
+        grant_id: ghostface_hint
+        weight: 6
+        amount: 1
+      - id: ticket_carrossel
+        grant_type: item
+        grant_id: ticket_carrossel
+        weight: 6
+        amount: 1
+# Catalogo dos itens apresentados ao jogador.
+items:
+  cesta_abobora:
+    name: Cesta de Doce
+    emoji: 🎃
+    description: Abre uma recompensa surpresa comum.
+    kind: consumable
+    requires_target: false
+    implemented: true
+    grantable: true
+    usable: false
+  cesta_doce_epica:
+    name: Cesta Rara
+    emoji: ✨
+    description: Abre duas rolagens de recompensas melhores.
+    kind: consumable
+    requires_target: false
+    implemented: true
+    grantable: true
+    usable: false
+  cesta_doce_amaldicoada:
+    name: Cesta Amaldicoada
+    emoji: 🕸
+    description: Abre duas rolagens de recompensas mais raras.
+    kind: consumable
+    requires_target: false
+    implemented: true
+    grantable: true
+    usable: false
+  ticket_carrossel:
+    name: Ticket do Carrossel
+    emoji: 🎟️
+    description: Permite entrar no Carrossel quando as inscricoes estiverem abertas.
+    kind: consumable
+    requires_target: false
+    implemented: true
+    grantable: true
+    usable: false
+  mute:
+    name: Mute
+    emoji: 🤐
+    description: Aplica uma maldicao curta em outro jogador.
+    kind: consumable
+    requires_target: true
+    implemented: true
+    grantable: true
+    usable: true
+  switch:
+    name: Troca Nome
+    emoji: 🎭
+    description: Troca temporariamente o apelido de outro jogador.
+    kind: consumable
+    requires_target: true
+    implemented: true
+    grantable: true
+    usable: true
+  interferencia:
+    name: Interferencia
+    emoji: 📡
+    description: Bloqueia midia e reacoes do alvo nos canais do evento por alguns minutos.
+    kind: consumable
+    requires_target: true
+    implemented: true
+    grantable: true
+    usable: true
+  ghostface_hint:
+    name: Dica do Ghostface
+    emoji: 🔎
+    description: Entrega uma dica privada sobre a pergunta atual do Ghostface.
+    kind: consumable
+    requires_target: false
+    implemented: true
+    grantable: true
+    usable: true
+# Produtos, moedas e precos da loja.
+shop:
+  dado_extra:
+    name: Dado Extra
+    emoji: 🎲
+    description: Adiciona 1 dado direto ao saldo do tabuleiro.
+    price: 50
+    currency: candies
+    grant_type: currency
+    grant_id: dice_count
+    grant_quantity: 1
+    enabled: true
+  cesta_abobora:
+    name: Cesta de Doce
+    emoji: 🎃
+    description: Tier comum. Faz 1 rolagem com foco maior em doces e chance menor de itens especiais.
+    price: 120
+    currency: candies
+    grant_type: item
+    grant_id: cesta_abobora
+    grant_quantity: 1
+    enabled: true
+  cesta_doce_epica_shop:
+    name: Cesta Rara
+    emoji: ✨
+    description: Tier raro. Faz 2 rolagens com chance melhor de itens especiais e upgrade para cesta amaldicoada.
+    price: 320
+    currency: candies
+    grant_type: item
+    grant_id: cesta_doce_epica
+    grant_quantity: 1
+    enabled: true
+  cesta_doce_amaldicoada_shop:
+    name: Cesta Amaldicoada
+    emoji: 🕸
+    description: Tier mais raro. Faz 2 rolagens puxadas para itens especiais, trick coins, XP e ticket do Carrossel.
+    price: 420
+    currency: candies
+    grant_type: item
+    grant_id: cesta_doce_amaldicoada
+    grant_quantity: 1
+    enabled: true
+  ticket_carrossel:
+    name: Ticket do Carrossel
+    emoji: 🎟️
+    description: Consumido ao entrar no Carrossel durante o periodo de inscricoes.
+    price: 60
+    currency: candies
+    grant_type: item
+    grant_id: ticket_carrossel
+    grant_quantity: 1
+    enabled: true
+  ticket_carrossel_trick:
+    name: Ticket do Carrossel Travesso
+    emoji: 🎟️
+    description: Consumido ao entrar no Carrossel durante o periodo de inscricoes, comprado com Moedas Travessas.
+    price: 95
+    currency: trick_coins
+    grant_type: item
+    grant_id: ticket_carrossel
+    grant_quantity: 1
+    enabled: true
+  cesta_doce_amaldicoada_trick:
+    name: Cesta Amaldicoada Travessa
+    emoji: 🕸
+    description: Versao premium por Moedas Travessas. Entrega o tier mais raro do /abrir_cestas por um preco bem
+      alto.
+    price: 400
+    currency: trick_coins
+    grant_type: item
+    grant_id: cesta_doce_amaldicoada
+    grant_quantity: 1
+    enabled: true
+  mute:
+    name: Mute
+    emoji: 🤐
+    description: Item de travessura que altera o apelido do alvo conforme ele fala.
+    price: 35
+    currency: trick_coins
+    grant_type: item
+    grant_id: mute
+    grant_quantity: 1
+    enabled: true
+  switch:
+    name: Troca Nome
+    emoji: 🎭
+    description: Item de travessura. Efeito sera ativado na fase de efeitos.
+    price: 65
+    currency: trick_coins
+    grant_type: item
+    grant_id: switch
+    grant_quantity: 1
+    enabled: true
+  interferencia:
+    name: Interferencia
+    emoji: 📡
+    description: Bloqueia midia e reacoes do alvo nos canais do evento por 10 minutos.
+    price: 50
+    currency: trick_coins
+    grant_type: item
+    grant_id: interferencia
+    grant_quantity: 1
+    enabled: true
+  cargo_loja:
+    name: Cargo da Loja
+    emoji: 🏷️
+    description: Compra o cargo especial configurado no /setup com Moedas Doce.
+    price: 1000
+    currency: candies
+    grant_type: role
+    grant_id: shop_role
+    grant_quantity: 1
+    enabled: true
+# Scheduler e configuracoes dos eventos publicos.
+public_events:
+  # Horarios em America/Sao_Paulo. Eventos publicos comuns alternam pelo intervalo.
+  scheduler:
+    enabled: true
+    interval_minutes: 60
+    julgamento_daily_times:
+    - '13:00'
+    - '19:00'
+    - '21:00'
+    announce_minutes_before: 1
+    pause_after_hour: 0
+    resume_hour: 8
+  # Perguntas, proporcao de imagens e recompensas do Ghostface.
+  ghostface:
+    enabled: true
+    question_source: content/halloween/ghostface_questions.json
+    question_sources:
+    - content/halloween/ghostface_questions.json
+    - content/halloween/ghostface_movie_questions.json
+    round_type_weights:
+      text: 70
+      movie_image: 30
+    answer_timeout_seconds: 90
+    webhook_name: Ghostface
+    webhook_avatar_path: Assets/Ghostface.jpg
+    difficulty_defaults:
+      easy:
+        reward_count: 2
+        allow_baskets: false
+      medium:
+        reward_count: 3
+        allow_baskets: true
+      hard:
+        reward_count: 3
+        allow_baskets: true
+    reward_pool:
+      candies:
+        grant_type: currency
+        grant_id: candies
+        min_amount: 30
+        max_amount: 70
+      xp_bank:
+        grant_type: currency
+        grant_id: xp_bank
+        min_amount: 30
+        max_amount: 80
+      trick_coins:
+        grant_type: currency
+        grant_id: trick_coins
+        min_amount: 6
+        max_amount: 16
+      dice_count:
+        grant_type: currency
+        grant_id: dice_count
+        min_amount: 1
+        max_amount: 2
+      baskets:
+        grant_type: item
+        grant_id: cesta_abobora
+        amount: 1
+      trick_item:
+        grant_type: item_random
+        item_ids:
+        - mute
+        - switch
+        - interferencia
+        amount: 1
+  # Chuva de Doces (nome interno antigo no banco: spider).
+  candy_shower:
+    enabled: true
+    emoji_id: null
+    emoji_ids:
+    - 1496905501349515476
+    - 1496905441488277574
+    - 1496905835237085245
+    - 1496906705219617030
+    duration_minutes: 15
+    spawn_chance_percent: 8
+    capture_seconds: 7
+    min_message_length: 3
+    max_spawns_per_event: 150
+    max_captures_per_user: 400
+    reward_per_capture:
+      candies: 2
+      trick_coins: 2
+    item_rewards:
+    - item_id: cesta_abobora
+      chance_percent_per_capture: 2
+    - item_id: interferencia
+      chance_percent_per_capture: 1
+# Carrossel: inscricao, perguntas, tempos, assets e premio final.
+carousel:
+  enabled: false
+  selection_weight: 1
+  signup_minutes: 3
+  signup_seconds: null
+  spectator_minutes_after_end: 3
+  answer_timeout_seconds: 25
+  question_source: content/halloween/ghostface_questions.json
+  question_sources:
+  - content/halloween/ghostface_questions.json
+  - content/halloween/ghostface_movie_questions.json
+  round_type_weights:
+    text: 65
+    movie_image: 35
+  announcement_title: 🎠 O Carrossel vai comecar
+  announcement_description: O Carrossel esta sendo preparado. Em **1 minuto** as inscricoes vao abrir.
+  signup_title: 🎠 Carrossel
+  signup_description: 'Clique em **Participar** para entrar no Carrossel. E necessario ter **1 Ticket do Carrossel**
+    no inventario.
+
+
+    O canal fechado sera usado para as rodadas oficiais e a thread ficara aberta como chat livre durante o evento.'
+  channel_name: carrossel
+  thread_name: 💬 Galera do Carrossel
+  winner_rewards:
+    ticket_carrossel: 1
+    candies: 320
+    trick_coins: 120
+    dice_count: 4
+    cesta_abobora: 3
+    xp_bank: 1800
+  webhook_name: Silas Dyrkon
+  webhook_avatar_path: Assets/boneco.png

@@ -1,0 +1,39 @@
+# Segredos e configuracao local
+.env
+.env.*
+!.env.example
+
+# Dados operacionais e backups
+data/*.sqlite3
+data/*.sqlite3-*
+data/*.db
+data/closures/
+
+# Artefatos Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Artefatos derivados do projeto
+cache/
+generated_assets/
+
+# Documentacao e notas internas
+*.md
+
+# Editor, sistema e logs
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

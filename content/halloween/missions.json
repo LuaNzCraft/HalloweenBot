@@ -1,0 +1,233 @@
+{
+  "daily_personal": [
+    {
+      "id": "daily_tricks",
+      "metric": "tricks_applied_total",
+      "target": 3,
+      "rewards": {
+        "trick_coins": 30,
+        "xp_bank": 900
+      },
+      "title_pt": "Travessuras do Dia",
+      "title_en": "Daily Tricks",
+      "description_pt": "Realize 3 travessuras ao longo do dia.",
+      "description_en": "Perform 3 tricks during the day."
+    },
+    {
+      "id": "daily_candies",
+      "metric": "candies_total",
+      "target": 250,
+      "rewards": {
+        "trick_coins": 24,
+        "xp_bank": 800
+      },
+      "title_pt": "Colheita de Doces",
+      "title_en": "Candy Harvest",
+      "description_pt": "Consiga 250 Moedas Doce no dia.",
+      "description_en": "Get 250 Sweet Coins in a day."
+    },
+    {
+      "id": "daily_board_laps",
+      "metric": "board_laps",
+      "target": 5,
+      "rewards": {
+        "candies": 180,
+        "dice_count": 2
+      },
+      "title_pt": "Voltas no Escuridao",
+      "title_en": "Laps in the Dark",
+      "description_pt": "De 5 voltas completas no tabuleiro hoje.",
+      "description_en": "Complete 5 full laps on the board today."
+    },
+    {
+      "id": "daily_horror_answer",
+      "metric": "horror_questions_correct_total",
+      "target": 1,
+      "rewards": {
+        "candies": 130,
+        "xp_bank": 1100
+      },
+      "title_pt": "Atenda a Ligacao",
+      "title_en": "Answer the Call",
+      "description_pt": "Acerte uma pergunta de evento hoje e mostre que voce conhece o horror.",
+      "description_en": "Get one event question right today and prove you know your horror."
+    },
+    {
+      "id": "daily_baskets_opened",
+      "metric": "baskets_opened_total",
+      "target": 3,
+      "rewards": {
+        "candies": 140,
+        "xp_bank": 850
+      },
+      "title_pt": "Cacada de Cestas",
+      "title_en": "Basket Hunt",
+      "description_pt": "Abra 3 cestas de doce ao longo do dia.",
+      "description_en": "Open 3 candy baskets during the day."
+    },
+    {
+      "id": "daily_trick_coins",
+      "metric": "trick_coins_total",
+      "target": 80,
+      "rewards": {
+        "candies": 170,
+        "xp_bank": 950
+      },
+      "title_pt": "Bolso Travesso",
+      "title_en": "Trickster Pocket",
+      "description_pt": "Consiga Moedas Travessas ao longo do dia.",
+      "description_en": "Earn Trick Coins during the day."
+    },
+    {
+      "id": "daily_xp_bank",
+      "metric": "xp_bank",
+      "target": 180,
+      "rewards": {
+        "trick_coins": 28,
+        "candies": 140
+      },
+      "title_pt": "Reserva Macabra",
+      "title_en": "Dark Reserve",
+      "description_pt": "Junte XP bank ao longo do dia.",
+      "description_en": "Build up XP Bank during the day."
+    },
+    {
+      "id": "daily_horror_answers_multi",
+      "metric": "horror_questions_correct_total",
+      "target": 2,
+      "rewards": {
+        "candies": 180,
+        "xp_bank": 1400
+      },
+      "title_pt": "Conhecedor do Horror",
+      "title_en": "Horror Expert",
+      "description_pt": "Acerte mais de uma pergunta de evento no mesmo dia.",
+      "description_en": "Get more than one event question right in the same day."
+    },
+    {
+      "id": "daily_mute_used",
+      "metric": "mute_used_total",
+      "target": 1,
+      "rewards": {
+        "trick_coins": 25,
+        "xp_bank": 700
+      },
+      "title_pt": "Silencio Sepulcral",
+      "title_en": "Dead Silence",
+      "description_pt": "Use um item de mute ao longo do dia.",
+      "description_en": "Use one mute item during the day."
+    },
+    {
+      "id": "daily_switch_used",
+      "metric": "switch_used_total",
+      "target": 1,
+      "rewards": {
+        "trick_coins": 25,
+        "xp_bank": 700
+      },
+      "title_pt": "Troca de Mascara",
+      "title_en": "Mask Swap",
+      "description_pt": "Use um item de switch ao longo do dia.",
+      "description_en": "Use one switch item during the day."
+    },
+    {
+      "id": "daily_profile_requests_sent",
+      "metric": "profile_requests_sent_total",
+      "target": 5,
+      "rewards": {
+        "candies": 120,
+        "xp_bank": 900
+      },
+      "title_pt": "Bater de Porta em Porta",
+      "title_en": "Door to Door",
+      "description_pt": "Faca 5 pedidos de Doce ou Travessura ao longo do dia.",
+      "description_en": "Make 5 Trick or Treat requests during the day."
+    },
+    {
+      "id": "daily_profile_requests_answered",
+      "metric": "profile_requests_answered_total",
+      "target": 3,
+      "rewards": {
+        "trick_coins": 30,
+        "xp_bank": 950
+      },
+      "title_pt": "Dono da Casa",
+      "title_en": "Homeowner Duty",
+      "description_pt": "Responda 3 pedidos de Doce ou Travessura hoje.",
+      "description_en": "Answer 3 Trick or Treat requests today."
+    }
+  ],
+  "daily_global": [
+    {
+      "id": "global_tricks",
+      "metric": "tricks_applied_total",
+      "target": 15,
+      "rewards": {
+        "trick_coins": 70,
+        "dice_count": 2,
+        "xp_bank": 1500
+      },
+      "title_pt": "Travessuras do Servidor",
+      "title_en": "Server Tricks",
+      "description_pt": "O servidor precisa realizar 15 travessuras hoje.",
+      "description_en": "The server must perform 15 tricks today."
+    },
+    {
+      "id": "global_candies",
+      "metric": "candies_total",
+      "target": 5000,
+      "rewards": {
+        "candies": 220,
+        "dice_count": 2,
+        "xp_bank": 1800
+      },
+      "title_pt": "Doces para Todos",
+      "title_en": "Candy for Everyone",
+      "description_pt": "O servidor precisa conseguir 5000 Moedas Doce hoje.",
+      "description_en": "The server must get 5000 Sweet Coins today."
+    },
+    {
+      "id": "global_board_laps",
+      "metric": "board_laps",
+      "target": 50,
+      "rewards": {
+        "dice_count": 2,
+        "xp_bank": 1600
+      },
+      "title_pt": "Ritual do Tabuleiro",
+      "title_en": "Board Ritual",
+      "description_pt": "O servidor precisa dar 50 voltas no tabuleiro hoje.",
+      "description_en": "The server must complete 50 board laps today."
+    },
+    {
+      "id": "global_profile_requests_resolved",
+      "metric": "profile_requests_resolved_total",
+      "target": 20,
+      "rewards": {
+        "candies": 180,
+        "trick_coins": 60,
+        "xp_bank": 1700
+      },
+      "title_pt": "Noite de Rua Cheia",
+      "title_en": "Busy Halloween Night",
+      "description_pt": "O servidor precisa resolver 20 pedidos de Doce ou Travessura hoje.",
+      "description_en": "The server must resolve 20 Trick or Treat requests today."
+    }
+  ],
+  "event_global": [
+    {
+      "id": "event_placeholder",
+      "metric": "candies_total",
+      "target": 10000,
+      "rewards": {
+        "candies": 1000,
+        "dice_count": 25,
+        "xp_bank": 50000
+      },
+      "title_pt": "Missao Global do Evento",
+      "title_en": "Event Global Mission",
+      "description_pt": "Placeholder temporario ate definirmos a missao global principal do evento.",
+      "description_en": "Temporary placeholder until we define the main event-wide mission."
+    }
+  ]
+}

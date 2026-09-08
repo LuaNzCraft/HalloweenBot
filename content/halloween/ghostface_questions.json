@@ -1,0 +1,391 @@
+[
+  {
+    "id": "ghostface_001",
+    "difficulty": "easy",
+    "question": "Qual slasher usa uma mascara branca e liga para as vitimas antes de atacar?",
+    "question_en": "Which slasher wears a white mask and calls victims before attacking?",
+    "hint_pt": "Pense em um assassino que sempre faz uma ligacao antes do ataque.",
+    "hint_en": "Think of a killer known for calling the victim before the attack.",
+    "hint_answer_pt": "ghostface",
+    "hint_answer_en": "ghostface",
+    "match_mode": "normalized",
+    "answers": ["ghostface", "ghost face"]
+  },
+  {
+    "id": "ghostface_002",
+    "difficulty": "easy",
+    "question": "Em que franquia aparece o personagem Ghostface?",
+    "question_en": "In which franchise does the character Ghostface appear?",
+    "hint_pt": "E a franquia em que a pergunta sobre filme favorito virou marca registrada.",
+    "hint_en": "It is the franchise where asking about your favorite scary movie became iconic.",
+    "hint_answer_pt": "panico",
+    "hint_answer_en": "scream",
+    "match_mode": "normalized",
+    "answers": ["panico", "pânico", "scream"]
+  },
+  {
+    "id": "ghostface_003",
+    "difficulty": "easy",
+    "question": "Qual objeto o Ghostface costuma usar como arma principal?",
+    "question_en": "What object does Ghostface usually use as his main weapon?",
+    "hint_pt": "Nao e uma arma de fogo.",
+    "hint_en": "It is not a firearm.",
+    "hint_answer_pt": "faca",
+    "hint_answer_en": "knife",
+    "match_mode": "normalized",
+    "answers": ["faca", "knife", "uma faca"]
+  },
+  {
+    "id": "ghostface_004",
+    "difficulty": "easy",
+    "question": "Qual é o nome completo do assassino mais famoso de Sexta-Feira 13?",
+    "question_en": "What is the full name of the most famous killer from Friday the 13th?",
+    "match_mode": "normalized",
+    "answers": ["jason voorhees"]
+  },
+  {
+    "id": "ghostface_005",
+    "difficulty": "medium",
+    "question": "Qual é o nome do maníaco que possuiu um boneco só para matar?",
+    "question_en": "What is the name of the maniac who possessed a doll just to kill?",
+    "match_mode": "normalized",
+    "answers": ["charles lee ray", "chucky"]
+  },
+  {
+    "id": "ghostface_006",
+    "difficulty": "easy",
+    "question": "Quem tá lá fora esperando o momento de você errar?",
+    "question_en": "Who is out there waiting for the moment you slip up?",
+    "match_mode": "normalized",
+    "answers": ["ghostface", "ghost face"]
+  },
+  {
+    "id": "ghostface_007",
+    "difficulty": "easy",
+    "question": "Qual é o nome do serial killer mascarado de Halloween?",
+    "question_en": "What is the name of the masked serial killer from Halloween?",
+    "match_mode": "normalized",
+    "answers": ["michael myers"]
+  },
+  {
+    "id": "ghostface_008",
+    "difficulty": "easy",
+    "question": "Quem é o assassino dos seus sonhos e pesadelos?",
+    "question_en": "Who is the killer of your dreams and nightmares?",
+    "match_mode": "normalized",
+    "answers": ["freddy krueger"]
+  },
+  {
+    "id": "ghostface_009",
+    "difficulty": "hard",
+    "question": "Qual é o nome do cubo usado para invocar os cenobitas em Hellraiser?",
+    "question_en": "What is the name of the box used to summon the cenobites in Hellraiser?",
+    "match_mode": "normalized",
+    "answers": ["lament configuration"]
+  },
+  {
+    "id": "ghostface_010",
+    "difficulty": "medium",
+    "question": "Qual é o nome da cidade onde se passa a maior parte de Pânico?",
+    "question_en": "What is the name of the town where most of Scream takes place?",
+    "match_mode": "normalized",
+    "answers": ["woodsboro"]
+  },
+  {
+    "id": "ghostface_011",
+    "difficulty": "easy",
+    "question": "Qual é o nome da boneca amaldiçoada do universo Invocação do Mal?",
+    "question_en": "What is the name of the cursed doll from The Conjuring universe?",
+    "match_mode": "normalized",
+    "answers": ["annabelle"]
+  },
+  {
+    "id": "ghostface_012",
+    "difficulty": "medium",
+    "question": "Qual é o nome do hotel isolado de O Iluminado?",
+    "question_en": "What is the name of the isolated hotel from The Shining?",
+    "match_mode": "normalized",
+    "answers": ["overlook hotel", "the overlook hotel", "overlook"]
+  },
+  {
+    "id": "ghostface_013",
+    "difficulty": "easy",
+    "question": "Qual é o nome da criatura principal de It: A Coisa?",
+    "question_en": "What is the name of the main creature in It?",
+    "match_mode": "normalized",
+    "answers": ["pennywise"]
+  },
+  {
+    "id": "ghostface_014",
+    "difficulty": "hard",
+    "question": "Qual é o nome do assassino no PRIMEIRO Sexta-Feira 13?",
+    "question_en": "What is the killer's name in the first Friday the 13th?",
+    "match_mode": "normalized",
+    "answers": ["pamela voorhees", "pamela"]
+  },
+  {
+    "id": "ghostface_015",
+    "difficulty": "easy",
+    "question": "Qual é o seu filme de terror favorito?",
+    "question_en": "What is your favorite horror movie?",
+    "match_mode": "normalized",
+    "answer_pool": "horror_movies",
+    "answers": []
+  },
+  {
+    "id": "ghostface_016",
+    "difficulty": "medium",
+    "question": "Quantas pessoas eram o Ghostface no primeiro Pânico?",
+    "question_en": "How many people were Ghostface in the first Scream?",
+    "match_mode": "normalized",
+    "answers": ["2", "dois", "two"]
+  },
+  {
+    "id": "ghostface_017",
+    "difficulty": "easy",
+    "question": "Qual é o nome do vilão de Jogos Mortais?",
+    "question_en": "What is the name of the villain from Saw?",
+    "match_mode": "normalized",
+    "answers": ["jigsaw", "john kramer"]
+  },
+  {
+    "id": "ghostface_018",
+    "difficulty": "medium",
+    "question": "Quem é o Monstro Moderno?",
+    "question_en": "Who is the Modern Monster?",
+    "match_mode": "normalized",
+    "answers": ["sen", "s e n"]
+  },
+  {
+    "id": "ghostface_019",
+    "difficulty": "easy",
+    "question": "Qual é o nome da menina possuída em O Exorcista?",
+    "question_en": "What is the name of the possessed girl in The Exorcist?",
+    "match_mode": "normalized",
+    "answers": ["regan", "regan macneil"]
+  },
+  {
+    "id": "ghostface_020",
+    "difficulty": "medium",
+    "question": "Qual é o nome do demônio que possui Regan em O Exorcista?",
+    "question_en": "What is the name of the demon that possesses Regan in The Exorcist?",
+    "match_mode": "normalized",
+    "answers": ["pazuzu"]
+  },
+  {
+    "id": "ghostface_021",
+    "difficulty": "easy",
+    "question": "Qual é o sobrenome de Laurie em Halloween?",
+    "question_en": "What is Laurie's last name in Halloween?",
+    "match_mode": "normalized",
+    "answers": ["strode", "laurie strode"]
+  },
+  {
+    "id": "ghostface_022",
+    "difficulty": "easy",
+    "question": "Qual é o nome da cidade amaldiçoada de It: A Coisa?",
+    "question_en": "What is the name of the cursed town in It?",
+    "match_mode": "normalized",
+    "answers": ["derry"]
+  },
+  {
+    "id": "ghostface_023",
+    "difficulty": "easy",
+    "question": "Qual é o nome do vampiro mais famoso da Transilvânia?",
+    "question_en": "What is the name of the most famous vampire from Transylvania?",
+    "match_mode": "normalized",
+    "answers": ["dracula", "count dracula", "conde dracula"]
+  },
+  {
+    "id": "ghostface_024",
+    "difficulty": "easy",
+    "question": "Qual é o nome da espécie da criatura principal de Alien?",
+    "question_en": "What is the species name of the main creature in Alien?",
+    "match_mode": "normalized",
+    "answers": ["xenomorph", "xenomorfo"]
+  },
+  {
+    "id": "ghostface_025",
+    "difficulty": "easy",
+    "question": "Qual é o nome completo da protagonista de Carrie?",
+    "question_en": "What is the full name of the protagonist from Carrie?",
+    "match_mode": "normalized",
+    "answers": ["carrie white", "carrie"]
+  },
+  {
+    "id": "ghostface_026",
+    "difficulty": "easy",
+    "question": "Qual é o nome do assassino de Psicose?",
+    "question_en": "What is the name of the killer in Psycho?",
+    "match_mode": "normalized",
+    "answers": ["norman bates", "norman"]
+  },
+  {
+    "id": "ghostface_027",
+    "difficulty": "easy",
+    "question": "Qual é o nome do palhaço assassino de Terrifier?",
+    "question_en": "What is the name of the killer clown from Terrifier?",
+    "match_mode": "normalized",
+    "answers": ["art", "art the clown"]
+  },
+  {
+    "id": "ghostface_028",
+    "difficulty": "easy",
+    "question": "Qual é o nome da garota que sai da televisão em O Chamado?",
+    "question_en": "What is the name of the girl who comes out of the television in The Ring?",
+    "match_mode": "normalized",
+    "answers": ["samara", "samara morgan"]
+  },
+  {
+    "id": "ghostface_029",
+    "difficulty": "easy",
+    "question": "Qual é o nome do cenobita mais famoso de Hellraiser?",
+    "question_en": "What is the name of the most famous cenobite in Hellraiser?",
+    "match_mode": "normalized",
+    "answers": ["pinhead"]
+  },
+  {
+    "id": "ghostface_030",
+    "difficulty": "easy",
+    "question": "Qual é o nome do boneco de Jogos Mortais?",
+    "question_en": "What is the name of the doll in Saw?",
+    "match_mode": "normalized",
+    "answers": ["billy", "billy the puppet"]
+  },
+  {
+    "id": "ghostface_031",
+    "difficulty": "easy",
+    "question": "Qual é o nome da vilã de A Órfã?",
+    "question_en": "What is the name of the villain in Orphan?",
+    "match_mode": "normalized",
+    "answers": ["esther", "esther coleman"]
+  },
+  {
+    "id": "ghostface_032",
+    "difficulty": "easy",
+    "question": "Qual é o nome do assassino de O Massacre da Serra Elétrica?",
+    "question_en": "What is the name of the killer in The Texas Chain Saw Massacre?",
+    "match_mode": "normalized",
+    "answers": ["leatherface"]
+  },
+  {
+    "id": "ghostface_033",
+    "difficulty": "medium",
+    "question": "Qual é o sobrenome do casal paranormal de Invocação do Mal?",
+    "question_en": "What is the last name of the paranormal couple from The Conjuring?",
+    "match_mode": "normalized",
+    "answers": ["warren", "warrens"]
+  },
+  {
+    "id": "ghostface_034",
+    "difficulty": "easy",
+    "question": "Qual é o nome da criatura principal de O Babadook?",
+    "question_en": "What is the name of the main creature in The Babadook?",
+    "match_mode": "normalized",
+    "answers": ["babadook", "the babadook"]
+  },
+  {
+    "id": "ghostface_035",
+    "difficulty": "medium",
+    "question": "Qual é o nome da cidade litorânea de Tubarão?",
+    "question_en": "What is the name of the seaside town in Jaws?",
+    "match_mode": "normalized",
+    "answers": ["amity", "amity island"]
+  },
+  {
+    "id": "ghostface_036",
+    "difficulty": "easy",
+    "question": "Qual é o nome do vilão sobrenatural de Candyman?",
+    "question_en": "What is the name of the supernatural villain in Candyman?",
+    "match_mode": "normalized",
+    "answers": ["candyman"]
+  },
+  {
+    "id": "ghostface_037",
+    "difficulty": "medium",
+    "question": "Qual é o nome do garoto que vê pessoas mortas em O Sexto Sentido?",
+    "question_en": "What is the name of the boy who sees dead people in The Sixth Sense?",
+    "match_mode": "normalized",
+    "answers": ["cole", "cole sear"]
+  },
+  {
+    "id": "ghostface_038",
+    "difficulty": "medium",
+    "question": "Qual é o nome do livro amaldiçoado de Evil Dead?",
+    "question_en": "What is the name of the cursed book in Evil Dead?",
+    "match_mode": "normalized",
+    "answers": ["necronomicon", "necronomicon ex mortis"]
+  },
+  {
+    "id": "ghostface_039",
+    "difficulty": "easy",
+    "question": "Qual é o nome do menino de O Iluminado?",
+    "question_en": "What is the name of the boy in The Shining?",
+    "match_mode": "normalized",
+    "answers": ["danny", "danny torrance"]
+  },
+  {
+    "id": "ghostface_040",
+    "difficulty": "easy",
+    "question": "Qual é o sobrenome de Sidney em Pânico?",
+    "question_en": "What is Sidney's last name in Scream?",
+    "match_mode": "normalized",
+    "answers": ["prescott", "sidney prescott"]
+  },
+  {
+    "id": "ghostface_041",
+    "difficulty": "medium",
+    "question": "Qual é o nome da protagonista de A Bruxa?",
+    "question_en": "What is the name of the protagonist in The Witch?",
+    "match_mode": "normalized",
+    "answers": ["thomasin"]
+  },
+  {
+    "id": "ghostface_042",
+    "difficulty": "hard",
+    "question": "Qual é o nome do navio de Alien?",
+    "question_en": "What is the name of the ship in Alien?",
+    "match_mode": "normalized",
+    "answers": ["nostromo"]
+  },
+  {
+    "id": "ghostface_043",
+    "difficulty": "easy",
+    "question": "Quem é a protagonista de M3GAN?",
+    "question_en": "Who is the main figure in M3GAN?",
+    "match_mode": "normalized",
+    "answers": ["m3gan"]
+  },
+  {
+    "id": "ghostface_044",
+    "difficulty": "medium",
+    "question": "Qual é o nome da protagonista de A Morte do Demônio original?",
+    "question_en": "What is the name of the protagonist of the original Evil Dead?",
+    "match_mode": "normalized",
+    "answers": ["ash", "ash williams"]
+  },
+  {
+    "id": "ghostface_045",
+    "difficulty": "medium",
+    "question": "Em qual franquia aparece o Necronomicon?",
+    "question_en": "In which franchise does the Necronomicon appear?",
+    "match_mode": "normalized",
+    "answers": ["evil dead"]
+  },
+  {
+    "id": "ghostface_046",
+    "difficulty": "medium",
+    "question": "Em qual filme aparece Valak em destaque solo?",
+    "question_en": "In which movie does Valak get a solo spotlight?",
+    "match_mode": "normalized",
+    "answers": ["a freira", "the nun"]
+  },
+  {
+    "id": "ghostface_047",
+    "difficulty": "medium",
+    "question": "Qual é o nome da personagem possuída de Evil Dead Rise?",
+    "question_en": "What is the name of the possessed character in Evil Dead Rise?",
+    "match_mode": "normalized",
+    "answers": ["ellie"]
+  }
+]
