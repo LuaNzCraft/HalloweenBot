@@ -30,6 +30,7 @@ generated_assets/
 
 # Documentacao e notas internas
 *.md
+!/README.md
 
 # Editor, sistema e logs
 .vscode/
