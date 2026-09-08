@@ -57,8 +57,8 @@ Depois de adicionar o bot ao servidor, use os comandos administrativos:
 - `/setup julgamento`: cria ou atualiza a estrutura do Carrossel.
 - `/setup ver`: mostra a configuração atual da guild.
 - `/evento`: inicia, pausa ou encerra o evento.
-- `/observador arquivar_mensagem`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
-- `/observador listar_arquivos` e `/observador definir_status`: administram a pool de mensagens arquivadas.
+- `/observador arquivo adicionar`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
+- `/observador arquivo listar` e `/observador arquivo status`: administram a pool de mensagens arquivadas.
 - `/leaderboard`: publica ou atualiza os rankings.
 
 Os IDs definidos por `/setup` são persistidos no SQLite e têm prioridade sobre `guild_defaults`.

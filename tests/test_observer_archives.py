@@ -12,6 +12,7 @@ import aiosqlite
 import discord
 from PIL import Image, ImageDraw
 
+from cogs.observer_archives import ObserverArchivesCog
 from cogs.public_events import PublicEventsCog
 from repositories.observer_archives_repo import ObserverArchivesRepo
 from repositories.public_events_repo import PublicEventsRepo
@@ -37,6 +38,23 @@ def archive_payload(*, source_message_id: int = 30) -> dict:
         "created_by": 50,
         "created_at": "2026-09-08T12:00:00+00:00",
     }
+
+
+class ObserverArchiveCommandTests(unittest.TestCase):
+    def test_archive_commands_are_grouped_under_observer_file(self) -> None:
+        cog = ObserverArchivesCog(SimpleNamespace())
+
+        qualified_names = [command.qualified_name for command in cog.walk_app_commands()]
+
+        self.assertEqual(
+            qualified_names,
+            [
+                "observador arquivo",
+                "observador arquivo adicionar",
+                "observador arquivo listar",
+                "observador arquivo status",
+            ],
+        )
 
 
 class ObserverArchivesRepoTests(unittest.IsolatedAsyncioTestCase):

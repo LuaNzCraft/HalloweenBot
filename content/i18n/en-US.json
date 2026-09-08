@@ -37,7 +37,7 @@
   "help.page.items.title": "Items and Inventory",
   "help.page.items.description": "Use `/perfil` to view your items and `/usar` to activate an item.\n\nRight now, the main working items are `mute`, `switch`, `interferencia`, `Observer Hint`, and `Carousel Ticket`. Baskets now exist in 3 tiers: `Candy Basket`, `Rare Basket`, and `Cursed Basket`. They can be opened in `/cestas` and concentrate a large share of the event's special items.",
   "help.page.commands.title": "Commands",
-  "help.page.commands.description": "**Player**\n`/perfil`, `/loja`, `/tabuleiro`, `/missao`, `/usar`, `/cestas`, `/lang`, `/help`\n\n**Admin**\n`/setup`, `/evento`, `/iniciar`, `/observador`, `/admin`, `/leaderboard`, `/fechamento`\n\nSome event systems are still expanding, so this help can grow with the bot.",
+  "help.page.commands.description": "**Player**\n`/perfil`, `/loja`, `/tabuleiro`, `/missao`, `/usar`, `/cestas`, `/lang`, `/help`\n\n**Admin**\n`/setup`, `/evento`, `/iniciar`, `/observador arquivo`, `/admin`, `/leaderboard`, `/fechamento`\n\nSome event systems are still expanding, so this help can grow with the bot.",
   "missions.title": "Halloween Missions",
   "missions.description": "Track your daily mission, the server-wide daily mission, and the active event mission.",
   "missions.section.personal": "Daily mission",

@@ -25,6 +25,11 @@ PUBLIC_ID_RE = re.compile(r"^[0-9a-f]{12}$")
 
 
 class ObserverArchivesCog(commands.GroupCog, name="observador"):
+    arquivo = app_commands.Group(
+        name="arquivo",
+        description="Administra as mensagens arquivadas pelo Observador.",
+    )
+
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.repo = ObserverArchivesRepo()
@@ -44,8 +49,8 @@ class ObserverArchivesCog(commands.GroupCog, name="observador"):
         permissions = getattr(interaction.user, "guild_permissions", None)
         return bool(getattr(permissions, "manage_guild", False))
 
-    @app_commands.command(
-        name="arquivar_mensagem",
+    @arquivo.command(
+        name="adicionar",
         description="Transforma uma mensagem do servidor em pergunta do Observador.",
     )
     @app_commands.guild_only()
@@ -149,7 +154,7 @@ class ObserverArchivesCog(commands.GroupCog, name="observador"):
         )
         view.message = sent
 
-    @app_commands.command(name="listar_arquivos", description="Lista os arquivos recentes do Observador.")
+    @arquivo.command(name="listar", description="Lista os arquivos recentes do Observador.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
     async def listar_arquivos(self, interaction: discord.Interaction) -> None:
@@ -181,10 +186,10 @@ class ObserverArchivesCog(commands.GroupCog, name="observador"):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @app_commands.command(name="definir_status", description="Ativa ou desativa um arquivo do Observador.")
+    @arquivo.command(name="status", description="Ativa ou desativa um arquivo do Observador.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
-    @app_commands.describe(arquivo="ID exibido em /observador listar_arquivos.", ativo="Novo estado do arquivo.")
+    @app_commands.describe(arquivo="ID exibido em /observador arquivo listar.", ativo="Novo estado do arquivo.")
     async def definir_status(self, interaction: discord.Interaction, arquivo: str, ativo: bool) -> None:
         if interaction.guild is None or not self._can_manage_guild(interaction):
             await interaction.response.send_message(
