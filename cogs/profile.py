@@ -609,6 +609,21 @@ class ProfileCog(commands.Cog):
             view=ProfileView(self, owner_id, locale),
         )
 
+    async def send_profile_panel(self, interaction: discord.Interaction, owner_id: int) -> None:
+        """Envia o perfil separado quando o painel de origem usa Components V2."""
+        await interaction.response.defer(ephemeral=True)
+        profile = await self.profile_service.get_profile(owner_id)
+        locale = await self.i18n.get_user_locale(owner_id)
+        member = interaction.guild.get_member(owner_id) if interaction.guild else None
+        user = member or interaction.user
+        embed = build_profile_embed(user, profile, self.i18n, locale)
+        await interaction.followup.send(
+            embed=embed,
+            view=ProfileView(self, owner_id, locale),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
     def build_trick_or_treat_request_embed(
         self,
         requester: discord.abc.User,

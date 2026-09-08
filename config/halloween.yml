@@ -552,7 +552,7 @@ items:
     grantable: true
     usable: false
   cesta_doce_amaldicoada:
-    name: Cesta Amaldicoada
+    name: Cesta Amaldiçoada
     emoji: 🕸
     description: Abre duas rolagens de recompensas mais raras.
     kind: consumable
@@ -630,7 +630,7 @@ shop:
   cesta_doce_epica_shop:
     name: Cesta Rara
     emoji: ✨
-    description: Tier raro. Faz 2 rolagens com chance melhor de itens especiais e upgrade para cesta amaldicoada.
+    description: Tier raro. Faz 2 rolagens com chance melhor de itens especiais e upgrade para cesta amaldiçoada.
     price: 320
     currency: candies
     grant_type: item
@@ -638,7 +638,7 @@ shop:
     grant_quantity: 1
     enabled: true
   cesta_doce_amaldicoada_shop:
-    name: Cesta Amaldicoada
+    name: Cesta Amaldiçoada
     emoji: 🕸
     description: Tier mais raro. Faz 2 rolagens puxadas para itens especiais, trick coins, XP e ticket do Carrossel.
     price: 420
@@ -668,7 +668,7 @@ shop:
     grant_quantity: 1
     enabled: true
   cesta_doce_amaldicoada_trick:
-    name: Cesta Amaldicoada Travessa
+    name: Cesta Amaldiçoada Travessa
     emoji: 🕸
     description: Versao premium por Moedas Travessas. Entrega o tier mais raro do /cestas por um preco bem
       alto.

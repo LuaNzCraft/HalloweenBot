@@ -8,7 +8,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 
 - Economia com Moedas Doce, Moedas Travessas, dados e XP Bank.
 - Loja em Components V2, separada por moeda, com compras rápidas de 1x, 5x e 10x.
-- Inventário e Cestas de Doce com recompensas configuráveis.
+- Inventário e Cestas de Doce com recompensas configuráveis e painel em Components V2.
 - Tabuleiro animado com casas de doce, travessura, maldição e recompensas por volta.
 - Missões pessoais, globais e de evento.
 - Perfil, leaderboard e sistema de Doce ou Travessura entre jogadores.

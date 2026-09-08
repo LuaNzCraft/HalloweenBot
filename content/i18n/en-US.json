@@ -162,6 +162,8 @@
   "baskets.open_five": "Open 5",
   "baskets.opened_title": "Baskets opened: {count}",
   "baskets.available": "Available baskets: **{count}**",
+  "baskets.stock_title": "Your Stock",
+  "baskets.next_title": "Next to Open",
   "baskets.field.candies": "🍬 Candies",
   "baskets.field.total": "🎃 Baskets",
   "baskets.field.active": "🎯 Opening Now",

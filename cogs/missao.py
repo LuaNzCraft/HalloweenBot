@@ -88,6 +88,21 @@ class MissaoCog(commands.Cog):
             view=MissionPanelView(self, owner_id, locale),
         )
 
+    async def send_mission_panel(self, interaction: discord.Interaction, owner_id: int) -> None:
+        """Envia as missoes separadas quando o painel de origem usa Components V2."""
+        await interaction.response.defer(ephemeral=True)
+        locale = await self.mission_service.i18n.get_user_locale(owner_id)
+        embed = await self.mission_service.build_embed(
+            interaction.guild.id if interaction.guild else None,
+            owner_id,
+        )
+        await interaction.followup.send(
+            embed=embed,
+            view=MissionPanelView(self, owner_id, locale),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(MissaoCog(bot))

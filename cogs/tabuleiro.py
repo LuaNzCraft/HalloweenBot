@@ -1165,6 +1165,19 @@ class TabuleiroCog(commands.Cog):
             view=BoardView(self, owner_id, dice_count, laps, locale),
         )
 
+    async def send_board_panel(self, interaction: discord.Interaction, owner_id: int) -> None:
+        """Envia o tabuleiro separado quando o painel de origem usa Components V2."""
+        await interaction.response.defer(ephemeral=True)
+        position, laps, dice_count, board_file = await self._build_board_panel_payload(owner_id)
+        locale = await self.i18n.get_user_locale(owner_id)
+        await interaction.followup.send(
+            content=self.texts.panel_content(locale, position, laps, dice_count),
+            file=board_file,
+            view=BoardView(self, owner_id, dice_count, laps, locale),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
     async def _build_board_panel_payload(self, user_id: int) -> tuple[int, int, int, discord.File]:
         position, laps = await self._get_or_create_player(user_id)
         profile = await self.users_repo.get_user(user_id)
