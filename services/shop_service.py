@@ -19,6 +19,7 @@ CURRENCY_LABELS = {
     "candies": "Moedas Doce",
     "trick_coins": "Moedas Travessas",
 }
+GRANT_CURRENCY_FIELDS = {"candies", "trick_coins", "dice_count", "xp_bank"}
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,24 @@ class ShopService:
         if entry.currency not in CURRENCY_LABELS:
             return PurchaseResult(False, self.i18n.t(locale, "shop.currency_not_configured"), entry_id=entry.id)
 
+        grant_item = None
+        if entry.grant_type == "item":
+            grant_item = self.item_catalog.get(entry.grant_id)
+            if grant_item is None or not grant_item.grantable:
+                return PurchaseResult(False, self.i18n.t(locale, "shop.grant_item_not_configured"))
+        elif entry.grant_type == "currency":
+            if entry.grant_id not in GRANT_CURRENCY_FIELDS:
+                return PurchaseResult(False, self.i18n.t(locale, "shop.grant_currency_not_configured"))
+        elif entry.grant_type == "role":
+            if entry.grant_id != "shop_role":
+                return PurchaseResult(False, self.i18n.t(locale, "shop.grant_role_not_configured"))
+        else:
+            return PurchaseResult(
+                False,
+                self.i18n.t(locale, "shop.grant_type_not_implemented"),
+                entry_id=entry.id,
+            )
+
         # Cargos só podem ser comprados uma vez; força quantity antes de qualquer cálculo
         if entry.grant_type == "role":
             quantity = 1
@@ -123,7 +142,7 @@ class ShopService:
         current = int(user.get(entry.currency, 0))
         affordable_quantity = current // entry.price if entry.price > 0 else quantity
         if affordable_quantity <= 0:
-            label = CURRENCY_LABELS[entry.currency]
+            label = self.i18n.maybe_t(locale, f"currency.{entry.currency}") or CURRENCY_LABELS[entry.currency]
             return PurchaseResult(
                 False,
                 self.i18n.t(locale, "shop.insufficient", current=current, currency=label, price=entry.price),
@@ -135,7 +154,7 @@ class ShopService:
         try:
             await self.users_repo.spend_currency(user_id, entry.currency, spent_amount)
         except ValueError:
-            label = CURRENCY_LABELS[entry.currency]
+            label = self.i18n.maybe_t(locale, f"currency.{entry.currency}") or CURRENCY_LABELS[entry.currency]
             return PurchaseResult(
                 False,
                 self.i18n.t(locale, "shop.insufficient", current=current, currency=label, price=entry.price),
@@ -146,11 +165,11 @@ class ShopService:
         partial = purchased_quantity < quantity
 
         if entry.grant_type == "item":
-            item = self.item_catalog.get(entry.grant_id)
-            if item is None or not item.grantable:
-                return PurchaseResult(False, self.i18n.t(locale, "shop.grant_item_not_configured"))
-
-            total = await self.users_repo.add_inventory_item(user_id, entry.grant_id, entry.grant_quantity * purchased_quantity)
+            total = await self.users_repo.add_inventory_item(
+                user_id,
+                entry.grant_id,
+                entry.grant_quantity * purchased_quantity,
+            )
             i18n_key = "shop.purchase_partial" if partial else "shop.purchase_done"
             return PurchaseResult(
                 True,
@@ -169,7 +188,11 @@ class ShopService:
             )
 
         if entry.grant_type == "currency":
-            total = await self.users_repo.add_currency(user_id, entry.grant_id, entry.grant_quantity * purchased_quantity)
+            total = await self.users_repo.add_currency(
+                user_id,
+                entry.grant_id,
+                entry.grant_quantity * purchased_quantity,
+            )
             i18n_key = "shop.purchase_partial_currency" if partial else "shop.purchase_done_currency"
             return PurchaseResult(
                 True,

@@ -14,6 +14,9 @@ from yaml.constructor import ConstructorError
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT_DIR / "config" / "halloween.yml"
 LOGGER = logging.getLogger(__name__)
+SHOP_CURRENCIES = {"candies", "trick_coins"}
+SHOP_GRANT_CURRENCIES = {"candies", "trick_coins", "dice_count", "xp_bank"}
+SHOP_GRANT_TYPES = {"item", "currency", "role"}
 
 
 class UniqueKeySafeLoader(yaml.SafeLoader):
@@ -288,9 +291,26 @@ class ConfigService:
                 raise ConfigError(f"{entry_path}: precisa ser um objeto")
             for key in ("name", "emoji", "description", "currency", "grant_type", "grant_id"):
                 self._string(entry, key, entry_path, allow_empty=key == "emoji")
-            self._integer(entry, "price", entry_path, minimum=0)
+            self._integer(entry, "price", entry_path, minimum=1)
             self._integer(entry, "grant_quantity", entry_path, minimum=1)
             self._boolean(entry, "enabled", entry_path)
+            currency = str(entry["currency"])
+            grant_type = str(entry["grant_type"])
+            grant_id = str(entry["grant_id"])
+            if currency not in SHOP_CURRENCIES:
+                raise ConfigError(f"{entry_path}.currency: moeda de compra nao suportada")
+            if grant_type not in SHOP_GRANT_TYPES:
+                raise ConfigError(f"{entry_path}.grant_type: tipo de entrega nao suportado")
+            if grant_type == "currency" and grant_id not in SHOP_GRANT_CURRENCIES:
+                raise ConfigError(f"{entry_path}.grant_id: moeda de entrega nao suportada")
+            if grant_type == "role" and grant_id != "shop_role":
+                raise ConfigError(f"{entry_path}.grant_id: cargo de entrega nao suportado")
+            if grant_type == "role" and int(entry["grant_quantity"]) != 1:
+                raise ConfigError(f"{entry_path}.grant_quantity: cargo precisa usar quantidade 1")
+            if grant_type == "item":
+                item = items.get(grant_id)
+                if not isinstance(item, dict) or not item.get("grantable"):
+                    raise ConfigError(f"{entry_path}.grant_id: item ausente ou nao concedivel")
 
         public_events = self._mapping(data, "public_events", "config")
         scheduler = self._mapping(public_events, "scheduler", "config.public_events")

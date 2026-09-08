@@ -74,6 +74,38 @@ class ConfigServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "config.effects.admin_mute_delete_messages"):
             self.service.reload()
 
+    def test_shop_rejects_an_unknown_grant_type(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["shop"]["dado_extra"]["grant_type"] = "tipo_inexistente"
+        self._write(invalid)
+
+        with self.assertRaisesRegex(ConfigError, "config.shop.dado_extra.grant_type"):
+            self.service.reload()
+
+    def test_shop_rejects_an_item_that_cannot_be_granted(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["shop"]["cesta_abobora"]["grant_id"] = "item_inexistente"
+        self._write(invalid)
+
+        with self.assertRaisesRegex(ConfigError, "config.shop.cesta_abobora.grant_id"):
+            self.service.reload()
+
+    def test_shop_price_must_be_positive(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["shop"]["dado_extra"]["price"] = 0
+        self._write(invalid)
+
+        with self.assertRaisesRegex(ConfigError, "config.shop.dado_extra.price"):
+            self.service.reload()
+
+    def test_shop_role_quantity_must_be_one(self) -> None:
+        invalid = deepcopy(self.valid_config)
+        invalid["shop"]["cargo_loja"]["grant_quantity"] = 2
+        self._write(invalid)
+
+        with self.assertRaisesRegex(ConfigError, "config.shop.cargo_loja.grant_quantity"):
+            self.service.reload()
+
     def test_observer_archive_message_limit_is_validated(self) -> None:
         invalid = deepcopy(self.valid_config)
         invalid["public_events"]["observer"]["archives"]["max_message_length"] = 1001
