@@ -24,6 +24,7 @@ HELP_PAGES = [
     HelpPage("help.page.missions.title", "help.page.missions.description"),
     HelpPage("help.page.board.title", "help.page.board.description"),
     HelpPage("help.page.events.title", "help.page.events.description"),
+    HelpPage("help.page.candy_hunt.title", "help.page.candy_hunt.description"),
     HelpPage("help.page.items.title", "help.page.items.description"),
     HelpPage("help.page.commands.title", "help.page.commands.description"),
 ]

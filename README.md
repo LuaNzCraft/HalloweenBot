@@ -11,7 +11,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Tabuleiro animado com casas de doce, travessura, maldição e recompensas por volta.
 - Missões pessoais, globais e de evento.
 - Perfil, leaderboard e sistema de Doce ou Travessura entre jogadores.
-- Eventos públicos como Ghostface, Chuva de Doces, Trem Fantasma e Doces no Chat.
+- Eventos públicos como Ghostface, Chuva de Doces, Trem Fantasma e Caça aos Doces.
 - Carrossel competitivo com inscrições, espectadores, rodadas e premiação.
 - Efeitos temporários com expiração, persistência e recuperação após reinício.
 - Localização em português do Brasil e inglês.
@@ -79,7 +79,7 @@ Uma configuração inválida é rejeitada e a última versão válida continua a
 - `/perfil`: mostra perfil, recursos e inventário.
 - `/loja`: abre a loja ou compra um item.
 - `/usar`: utiliza um item do inventário.
-- `/abrir_cestas`: abre o painel de Cestas de Doce.
+- `/cestas`: abre o painel de Cestas de Doce.
 - `/tabuleiro`: mostra o tabuleiro atual.
 - `/missao`: mostra missões e progresso.
 - `/tempo`: informa o próximo evento público.

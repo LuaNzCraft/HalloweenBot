@@ -17,7 +17,7 @@ class PublicEventTextsService:
     ) -> discord.Embed:
         reward_label = "doce" if reward_candies == 1 else "doces"
         embed = discord.Embed(
-            title="🍬 Um doce apareceu!",
+            title="🍬 Caça aos Doces!",
             description=(
                 "Encontre o doce indicado entre as reacoes abaixo.\n\n"
                 f"# {target_emoji}\n\n"

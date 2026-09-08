@@ -89,7 +89,7 @@ chat_bonus:
     - grant_type: currency
       grant_id: trick_coins
       amount: 30
-# Doces no Chat: disputa curta com uma tentativa por jogador.
+# Caça aos Doces: disputa curta com uma tentativa por jogador.
 chat_candy:
   enabled: true
   emoji_ids:
@@ -670,7 +670,7 @@ shop:
   cesta_doce_amaldicoada_trick:
     name: Cesta Amaldicoada Travessa
     emoji: 🕸
-    description: Versao premium por Moedas Travessas. Entrega o tier mais raro do /abrir_cestas por um preco bem
+    description: Versao premium por Moedas Travessas. Entrega o tier mais raro do /cestas por um preco bem
       alto.
     price: 400
     currency: trick_coins

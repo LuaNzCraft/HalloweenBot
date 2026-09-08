@@ -97,8 +97,8 @@ class BasketsCog(commands.Cog):
             i18n_service=self.i18n,
         )
 
-    @app_commands.command(name="abrir_cestas", description="Abre o painel das suas Cestas de Doce.")
-    async def abrir_cestas(self, interaction: discord.Interaction) -> None:
+    @app_commands.command(name="cestas", description="Abre o painel das suas Cestas de Doce.")
+    async def cestas(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         locale = await self.i18n.get_user_locale(interaction.user.id)
         basket_count, embed, file = await self._build_panel(interaction.user.id, locale, user=interaction.user)

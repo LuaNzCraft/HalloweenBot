@@ -122,6 +122,7 @@ class ChatCandyConfigTests(unittest.TestCase):
             option_count=3,
         )
 
+        self.assertEqual(embed.title, "🍬 Caça aos Doces!")
         self.assertIn("uma tentativa", embed.description.lower())
         self.assertIn("<:doce:123>", embed.description)
 
