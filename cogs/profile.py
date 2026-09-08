@@ -18,8 +18,12 @@ from services.mission_service import MissionService
 from services.profile_service import ProfileService
 from services.i18n_service import I18nService
 from services.profile_request_settlement_service import ProfileRequestSettlementService
-from utils.profile_embed import build_profile_embed, build_public_profile_embed
 from utils.event_config import get_achievements_config, get_profile_requests_config
+from views.profile_panel import (
+    ProfilePanelData,
+    ProfilePanelView,
+    build_public_profile_container,
+)
 
 
 
@@ -33,58 +37,24 @@ def _resolve_profile_timezone() -> timezone | ZoneInfo:
 PROFILE_REQUESTS_TIMEZONE = _resolve_profile_timezone()
 
 
-class ProfileView(discord.ui.View):
-    def __init__(self, cog: "ProfileCog", owner_id: int, locale: str) -> None:
-        super().__init__(timeout=900)
-        self.cog = cog
-        self.owner_id = owner_id
-        self.locale = locale
-        self.shop.label = cog.i18n.t(locale, "common.shop")
-        self.board.label = cog.i18n.t(locale, "common.board")
-        self.missions.label = cog.i18n.t(locale, "common.missions")
-        self.baskets.label = cog.i18n.t(locale, "common.open_baskets")
+class PublicProfileRequestButton(discord.ui.Button):
+    def __init__(self, label: str, *, disabled: bool) -> None:
+        super().__init__(
+            label=label,
+            emoji="🎃",
+            style=discord.ButtonStyle.danger,
+            disabled=disabled,
+            custom_id="profile:request:candy",
+        )
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner_id:
-            return True
-
-        await interaction.response.send_message(self.cog.i18n.t(self.locale, "common.not_owner.profile"), ephemeral=True)
-        return False
-
-    @discord.ui.button(label="Loja", style=discord.ButtonStyle.danger)
-    async def shop(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        shop_cog = interaction.client.get_cog("ShopCog")
-        if shop_cog is None:
-            await interaction.response.send_message(self.cog.i18n.t(self.locale, "common.not_loaded.shop"), ephemeral=True)
+    async def callback(self, interaction: discord.Interaction) -> None:
+        panel = self.view
+        if not isinstance(panel, PublicProfileView):
             return
-        await shop_cog.show_shop_panel(interaction, self.owner_id)
-
-    @discord.ui.button(label="Tabuleiro", style=discord.ButtonStyle.danger)
-    async def board(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        board_cog = interaction.client.get_cog("TabuleiroCog")
-        if board_cog is None:
-            await interaction.response.send_message(self.cog.i18n.t(self.locale, "common.not_loaded.board"), ephemeral=True)
-            return
-        await board_cog.show_board_panel(interaction, self.owner_id)
-
-    @discord.ui.button(label="Missoes", style=discord.ButtonStyle.danger)
-    async def missions(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        mission_cog = interaction.client.get_cog("MissaoCog")
-        if mission_cog is None:
-            await interaction.response.send_message(self.cog.i18n.t(self.locale, "common.not_loaded.missions"), ephemeral=True)
-            return
-        await mission_cog.show_mission_panel(interaction, self.owner_id)
-
-    @discord.ui.button(label="Abrir Cestas", style=discord.ButtonStyle.danger)
-    async def baskets(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        baskets_cog = interaction.client.get_cog("BasketsCog")
-        if baskets_cog is None:
-            await interaction.response.send_message(self.cog.i18n.t(self.locale, "common.not_loaded.baskets"), ephemeral=True)
-            return
-        await baskets_cog.show_basket_panel(interaction, self.owner_id)
+        await panel.submit_request(interaction, self)
 
 
-class PublicProfileView(discord.ui.View):
+class PublicProfileView(discord.ui.LayoutView):
     def __init__(
         self,
         cog: "ProfileCog",
@@ -92,6 +62,7 @@ class PublicProfileView(discord.ui.View):
         viewer_id: int,
         target_id: int,
         locale: str,
+        data: ProfilePanelData,
         *,
         can_request: bool,
     ) -> None:
@@ -101,8 +72,14 @@ class PublicProfileView(discord.ui.View):
         self.viewer_id = viewer_id
         self.target_id = target_id
         self.locale = locale
-        self.trick_or_treat.label = cog.i18n.t(locale, "profile.trick_or_treat")
-        self.trick_or_treat.disabled = not can_request
+        self.data = data
+        self.message: discord.Message | None = None
+        self.request_button = PublicProfileRequestButton(
+            cog.i18n.t(locale, "profile.trick_or_treat"),
+            disabled=not can_request,
+        )
+        self.add_item(build_public_profile_container(cog, locale, data))
+        self.add_item(discord.ui.ActionRow(self.request_button))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.viewer_id:
@@ -113,20 +90,24 @@ class PublicProfileView(discord.ui.View):
         )
         return False
 
-    @discord.ui.button(label="Doce ou Travessura", style=discord.ButtonStyle.primary, emoji="🎃")
-    async def trick_or_treat(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def submit_request(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
         if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 self.cog.i18n.t(self.locale, "target.guild_only"),
                 ephemeral=True,
             )
             return
+        await interaction.response.defer()
         guild_id = interaction.guild.id
         now_dt = datetime.now(PROFILE_REQUESTS_TIMEZONE)
         now_iso = now_dt.isoformat()
         cooldown_remaining = await self.cog.profile_requests_repo.get_cooldown_remaining_seconds(guild_id, interaction.user.id, now_iso)
         if cooldown_remaining > 0:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(
                     self.locale,
                     "profile.trick_or_treat_on_cooldown",
@@ -148,14 +129,14 @@ class PublicProfileView(discord.ui.View):
             channel_id=interaction.channel.id,
         )
         if not active_created:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_pending_exists"),
                 ephemeral=True,
             )
             return
         if not await self.cog._is_recently_active_in_event(guild_id, self.target_id):
             await self.cog.profile_requests_repo.delete_active_request(guild_id, interaction.user.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_target_inactive"),
                 ephemeral=True,
             )
@@ -167,7 +148,7 @@ class PublicProfileView(discord.ui.View):
         can_give_trick = int(target_profile.get("trick_coins", 0)) >= trick_amount
         if not can_give_candy and not can_give_trick:
             await self.cog.profile_requests_repo.delete_active_request(guild_id, interaction.user.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_target_unavailable"),
                 ephemeral=True,
             )
@@ -183,7 +164,7 @@ class PublicProfileView(discord.ui.View):
         )
         if not registered:
             await self.cog.profile_requests_repo.delete_active_request(guild_id, interaction.user.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_already_requested_today"),
                 ephemeral=True,
             )
@@ -198,12 +179,11 @@ class PublicProfileView(discord.ui.View):
                 target_id=self.target_id,
                 date_key=date_key,
             )
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_send_failed"),
                 ephemeral=True,
             )
             return
-        await self.cog.profile_service.users_repo.increment_event_counter(interaction.user.id, "profile_requests_sent_total", 1)
         target_locale = await self.cog.i18n.get_user_locale(self.target_id)
         embed = self.cog.build_trick_or_treat_request_embed(
             requester=interaction.user,
@@ -236,7 +216,7 @@ class PublicProfileView(discord.ui.View):
                 target_id=self.target_id,
                 date_key=date_key,
             )
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_send_failed"),
                 ephemeral=True,
             )
@@ -248,14 +228,35 @@ class PublicProfileView(discord.ui.View):
             created_at,
             sent_message.id,
         )
+        await self.cog.profile_service.users_repo.increment_event_counter(
+            interaction.user.id,
+            "profile_requests_sent_total",
+            1,
+        )
 
         button.disabled = True
         button.label = self.cog.i18n.t(self.locale, "profile.trick_or_treat_sent")
-        await interaction.response.edit_message(view=self)
+        await interaction.edit_original_response(
+            view=self,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
         await interaction.followup.send(
             self.cog.i18n.t(self.locale, "profile.trick_or_treat_request_sent", target=target_user.display_name),
             ephemeral=True,
         )
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item: discord.ui.Item,
+        /,
+    ) -> None:
+        message = self.cog.i18n.t(self.locale, "profile.request_failed")
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
 
 
 class TrickOrTreatRequestView(discord.ui.View):
@@ -311,9 +312,10 @@ class TrickOrTreatRequestView(discord.ui.View):
         await self._finish(interaction, "ignore")
 
     async def _finish(self, interaction: discord.Interaction, outcome: str) -> None:
+        await interaction.response.defer()
         async with self._resolving:
             if self._resolved:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     self.cog.i18n.t(self.locale, "profile.trick_or_treat_already_resolved"),
                     ephemeral=True,
                 )
@@ -359,7 +361,7 @@ class TrickOrTreatRequestView(discord.ui.View):
             )
         except ProfileRequestInsufficientFunds:
             self._resolved = False
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(
                     self.locale,
                     "profile.trick_or_treat_not_enough",
@@ -370,7 +372,7 @@ class TrickOrTreatRequestView(discord.ui.View):
             )
             return
         except ProfileRequestNotPending:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 self.cog.i18n.t(self.locale, "profile.trick_or_treat_already_resolved"),
                 ephemeral=True,
             )
@@ -400,7 +402,7 @@ class TrickOrTreatRequestView(discord.ui.View):
                 ),
                 inline=False,
             )
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             content=self.cog.i18n.t(
                 self.locale,
                 "profile.trick_or_treat_request_resolved",
@@ -566,20 +568,36 @@ class ProfileCog(commands.Cog):
         profile = await self.profile_service.get_profile(member.id)
         viewer_locale = await self.i18n.get_user_locale(interaction.user.id)
         if member.id == interaction.user.id:
-            embed = build_profile_embed(member, profile, self.i18n, viewer_locale)
-            view = ProfileView(self, member.id, viewer_locale)
-        else:
-            embed = build_public_profile_embed(member, profile, self.i18n, viewer_locale)
-            can_request = False
-            if interaction.guild is not None:
-                can_request = await self._is_recently_active_in_event(interaction.guild.id, member.id)
-            view = PublicProfileView(self, interaction.guild.id if interaction.guild else None, interaction.user.id, member.id, viewer_locale, can_request=can_request)
-        send_kwargs = {
-            "embed": embed,
-            "ephemeral": True,
-            "view": view,
-        }
-        await interaction.followup.send(**send_kwargs)
+            panel = self._build_profile_panel(member, profile, viewer_locale)
+            message = await interaction.followup.send(
+                view=panel,
+                ephemeral=True,
+                wait=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            panel.message = message
+            return
+
+        data = self._build_profile_data(member, profile)
+        can_request = False
+        if interaction.guild is not None:
+            can_request = await self._is_recently_active_in_event(interaction.guild.id, member.id)
+        view = PublicProfileView(
+            self,
+            interaction.guild.id if interaction.guild else None,
+            interaction.user.id,
+            member.id,
+            viewer_locale,
+            data,
+            can_request=can_request,
+        )
+        message = await interaction.followup.send(
+            view=view,
+            ephemeral=True,
+            wait=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        view.message = message
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -601,27 +619,47 @@ class ProfileCog(commands.Cog):
         locale = await self.i18n.get_user_locale(owner_id)
         member = interaction.guild.get_member(owner_id) if interaction.guild else None
         user = member or interaction.user
-        embed = build_profile_embed(user, profile, self.i18n, locale)
-        await interaction.edit_original_response(
+        panel = self._build_profile_panel(user, profile, locale)
+        message = await interaction.edit_original_response(
             content=None,
-            embed=embed,
+            embed=None,
             attachments=[],
-            view=ProfileView(self, owner_id, locale),
+            view=panel,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        panel.message = message
+
+    def _build_profile_panel(
+        self,
+        member: discord.abc.User,
+        profile: dict,
+        locale: str,
+    ) -> ProfilePanelView:
+        data = self._build_profile_data(member, profile)
+        return ProfilePanelView(
+            self,
+            owner_id=member.id,
+            locale=locale,
+            data=data,
         )
 
-    async def send_profile_panel(self, interaction: discord.Interaction, owner_id: int) -> None:
-        """Envia o perfil separado quando o painel de origem usa Components V2."""
-        await interaction.response.defer(ephemeral=True)
-        profile = await self.profile_service.get_profile(owner_id)
-        locale = await self.i18n.get_user_locale(owner_id)
-        member = interaction.guild.get_member(owner_id) if interaction.guild else None
-        user = member or interaction.user
-        embed = build_profile_embed(user, profile, self.i18n, locale)
-        await interaction.followup.send(
-            embed=embed,
-            view=ProfileView(self, owner_id, locale),
-            ephemeral=True,
-            allowed_mentions=discord.AllowedMentions.none(),
+    @staticmethod
+    def _build_profile_data(
+        member: discord.abc.User,
+        profile: dict,
+    ) -> ProfilePanelData:
+        return ProfilePanelData(
+            display_name=member.display_name,
+            avatar_url=member.display_avatar.url,
+            xp_bank=int(profile.get("xp_bank", 0)),
+            candies=int(profile.get("candies", 0)),
+            trick_coins=int(profile.get("trick_coins", 0)),
+            dice_count=int(profile.get("dice_count", 0)),
+            board_position=int(profile.get("board_position", 0)),
+            board_laps=int(profile.get("board_laps", 0)),
+            candies_total=int(profile.get("candies_total", 0)),
+            tricks_applied_total=int(profile.get("tricks_applied_total", 0)),
+            inventory_summary=str(profile.get("inventory_summary") or ""),
         )
 
     def build_trick_or_treat_request_embed(

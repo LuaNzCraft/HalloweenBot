@@ -42,11 +42,7 @@ class BasketsCog(commands.Cog):
     async def cestas(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         locale = await self.i18n.get_user_locale(interaction.user.id)
-        panel, file = await self._build_panel(
-            interaction.user.id,
-            locale,
-            user=interaction.user,
-        )
+        panel, file = await self._build_panel(interaction.user.id, locale)
         sent = await interaction.followup.send(
             file=file,
             view=panel,
@@ -59,8 +55,7 @@ class BasketsCog(commands.Cog):
     async def show_basket_panel(self, interaction: discord.Interaction, owner_id: int) -> None:
         await interaction.response.defer()
         locale = await self.i18n.get_user_locale(owner_id)
-        member = interaction.guild.get_member(owner_id) if interaction.guild else None
-        panel, file = await self._build_panel(owner_id, locale, user=member)
+        panel, file = await self._build_panel(owner_id, locale)
         message = await interaction.edit_original_response(
             content=None,
             embed=None,
@@ -79,7 +74,6 @@ class BasketsCog(commands.Cog):
     ) -> None:
         await interaction.response.defer()
         locale = await self.i18n.get_user_locale(user_id)
-        member = interaction.guild.get_member(user_id) if interaction.guild else None
         result = await self.inventory_service.open_pumpkin_baskets(
             user_id,
             quantity,
@@ -93,7 +87,6 @@ class BasketsCog(commands.Cog):
         panel, file = await self._build_panel(
             user_id,
             locale,
-            user=member,
             result_text=self._format_reward_block(result.message),
             result_title=result_title,
             existing_panel=old_panel,
@@ -110,7 +103,6 @@ class BasketsCog(commands.Cog):
         user_id: int,
         locale: str,
         *,
-        user: discord.User | discord.Member | None = None,
         result_text: str | None = None,
         result_title: str | None = None,
         existing_panel: BasketPanelView | None = None,
@@ -125,7 +117,6 @@ class BasketsCog(commands.Cog):
             active_key=active_key,
             accent_color=color,
             icon_filename=icon_path.name,
-            user_name=getattr(user, "display_name", None),
             result_text=result_text,
             result_title=result_title,
         )

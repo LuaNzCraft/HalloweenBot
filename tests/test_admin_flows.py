@@ -163,7 +163,10 @@ class EventoLifecycleTests(unittest.IsolatedAsyncioTestCase):
             cancel_active_event=AsyncMock(return_value=True),
         )
         cog = object.__new__(EventoCog)
-        cog.admin_repo = SimpleNamespace(set_runtime=AsyncMock())
+        cog.admin_repo = SimpleNamespace(
+            get_runtime=AsyncMock(return_value={"event_active": True}),
+            set_runtime=AsyncMock(),
+        )
         cog.public_events_repo = SimpleNamespace(
             reset_observer_state=AsyncMock(),
             reset_spider_state=AsyncMock(),

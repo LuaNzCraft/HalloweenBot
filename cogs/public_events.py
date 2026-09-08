@@ -87,6 +87,7 @@ class PublicEventsCog(commands.Cog):
         self._spider_expire_tasks: dict[tuple[int, int], asyncio.Task] = {}
         self._spider_finish_tasks: dict[int, asyncio.Task] = {}
         self._chat_bonus_progress_locks: dict[int, asyncio.Lock] = {}
+        self._manual_start_locks: dict[int, asyncio.Lock] = {}
         self._chat_bonus_message_windows: dict[int, deque[datetime]] = {}
         self._chat_candy_guild_locks: dict[int, asyncio.Lock] = {}
         self._chat_candy_expire_tasks: dict[int, asyncio.Task] = {}
@@ -120,6 +121,7 @@ class PublicEventsCog(commands.Cog):
             task.cancel()
         self._chat_candy_expire_tasks.clear()
         self._chat_candy_guild_locks.clear()
+        self._manual_start_locks.clear()
 
     def _load_config(self) -> dict:
         return get_public_events_config()
@@ -252,60 +254,54 @@ class PublicEventsCog(commands.Cog):
         embed.add_field(name=self.i18n.t(locale, "public_events.tempo.schedule_name"), value=self._scheduler_display_localized(locale, scheduler), inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="iniciar", description="Admin: inicia um evento publico especifico para teste.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    @app_commands.choices(
-        evento=[
-            app_commands.Choice(name="Observador", value="observer"),
-            app_commands.Choice(name="Chuva de Doces", value="aranhas"),
-            app_commands.Choice(name="Carrossel", value="julgamento"),
-        ]
-    )
-    async def iniciar(self, interaction: discord.Interaction, evento: app_commands.Choice[str]) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
+    async def start_manual_event(
+        self,
+        interaction: discord.Interaction,
+        event_name: str,
+    ) -> tuple[bool, str]:
+        guild = interaction.guild
+        if guild is None:
+            return False, "Use o painel dentro de um servidor."
+        if event_name not in {"observer", "aranhas", "julgamento"}:
+            return False, "Evento publico desconhecido."
 
-        await interaction.response.defer(ephemeral=True)
-        if await self._has_active_public_runtime(interaction.guild.id):
-            await interaction.followup.send("Ja existe um evento publico ativo neste servidor.", ephemeral=True)
-            return
+        lock = self._manual_start_locks.setdefault(guild.id, asyncio.Lock())
+        async with lock:
+            if await self._has_active_public_runtime(guild.id):
+                return False, "Ja existe um evento publico ativo neste servidor."
 
-        config = self._load_config()
-        if evento.value == "observer":
-            ok, reason = await self._start_observer(interaction.guild, config)
-            if ok:
-                await self._audit_manual_start(interaction, "observer")
-            await interaction.followup.send(
-                "Observador iniciado para teste." if ok else f"Nao foi possivel iniciar o Observador: {reason}",
-                ephemeral=True,
-            )
-            return
+            config = self._load_config()
+            if event_name == "observer":
+                ok, reason = await self._start_observer(guild, config)
+                if ok:
+                    await self._audit_manual_start(interaction, "observer")
+                return (
+                    (True, "Observador iniciado para teste.")
+                    if ok
+                    else (False, f"Nao foi possivel iniciar o Observador: {reason}")
+                )
 
-        if evento.value == "julgamento":
-            julgamento_cog = self.bot.get_cog("JulgamentoCog")
-            if julgamento_cog is None or not hasattr(julgamento_cog, "start_scheduled_event"):
-                await interaction.followup.send("A cog de Julgamento nao esta carregada.", ephemeral=True)
-                return
-            ok, reason = await julgamento_cog.start_scheduled_event(interaction.guild)
-            if ok:
-                await self._audit_manual_start(interaction, "carrossel")
-            await interaction.followup.send(
-                "Carrossel iniciado para teste." if ok else f"Nao foi possivel iniciar o Carrossel: {reason}",
-                ephemeral=True,
-            )
-            return
+            if event_name == "julgamento":
+                julgamento_cog = self.bot.get_cog("JulgamentoCog")
+                if julgamento_cog is None or not hasattr(julgamento_cog, "start_scheduled_event"):
+                    return False, "A cog do Carrossel nao esta carregada."
+                ok, reason = await julgamento_cog.start_scheduled_event(guild)
+                if ok:
+                    await self._audit_manual_start(interaction, "carrossel")
+                return (
+                    (True, "Carrossel iniciado para teste.")
+                    if ok
+                    else (False, f"Nao foi possivel iniciar o Carrossel: {reason}")
+                )
 
-        if evento.value == "aranhas":
-            ok, reason = await self._start_spider_infestation(interaction.guild, config)
+            ok, reason = await self._start_spider_infestation(guild, config)
             if ok:
                 await self._audit_manual_start(interaction, "chuva_de_doces")
-            await interaction.followup.send(
-                "Chuva de Doces iniciada para teste." if ok else f"Nao foi possivel iniciar Chuva de Doces: {reason}",
-                ephemeral=True,
+            return (
+                (True, "Chuva de Doces iniciada para teste.")
+                if ok
+                else (False, f"Nao foi possivel iniciar Chuva de Doces: {reason}")
             )
-            return
 
     async def _audit_manual_start(self, interaction: discord.Interaction, event_name: str) -> None:
         await self.audit_service.log(

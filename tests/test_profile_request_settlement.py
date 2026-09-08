@@ -279,12 +279,17 @@ class ProfileRequestPresentationRetryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_discord_edit_failure_does_not_replay_the_transfer(self) -> None:
         response = SimpleNamespace(
-            edit_message=AsyncMock(side_effect=[RuntimeError("discord edit failed"), None]),
+            defer=AsyncMock(),
             send_message=AsyncMock(),
+        )
+        edit_original_response = AsyncMock(
+            side_effect=[RuntimeError("discord edit failed"), None]
         )
         interaction = SimpleNamespace(
             user=SimpleNamespace(id=20, display_name="Target"),
             response=response,
+            followup=SimpleNamespace(send=AsyncMock()),
+            edit_original_response=edit_original_response,
         )
 
         with self.assertRaisesRegex(RuntimeError, "discord edit failed"):
@@ -296,7 +301,8 @@ class ProfileRequestPresentationRetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(requester["candies"], 10)
         self.assertEqual(target["candies"], 20)
         self.assertEqual(target["profile_requests_answered_total"], 1)
-        self.assertEqual(response.edit_message.await_count, 2)
+        self.assertEqual(response.defer.await_count, 2)
+        self.assertEqual(edit_original_response.await_count, 2)
 
 
 if __name__ == "__main__":

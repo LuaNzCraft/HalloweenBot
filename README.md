@@ -11,7 +11,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Inventário e Cestas de Doce com recompensas configuráveis e painel em Components V2.
 - Tabuleiro animado com casas de doce, travessura, maldição e recompensas por volta.
 - Missões pessoais, globais e de evento.
-- Perfil, leaderboard e sistema de Doce ou Travessura entre jogadores.
+- Perfil em Components V2, leaderboard e sistema de Doce ou Travessura entre jogadores.
 - Eventos públicos como Observador, Arquivos do Observador, Chuva de Doces, Trem Fantasma e Caça aos Doces.
 - Carrossel competitivo com inscrições, espectadores, rodadas e premiação.
 - Efeitos temporários com expiração, persistência e recuperação após reinício.
@@ -55,7 +55,7 @@ python main.py
 Depois de adicionar o bot ao servidor, use os comandos administrativos:
 
 - `/setup`: abre um painel privado em Components V2 para consultar e configurar canais, cargos, Carrossel e sistema.
-- `/evento`: inicia, pausa ou encerra o evento.
+- `/evento`: painel administrativo para acompanhar, iniciar, pausar e encerrar o evento, alem de iniciar ou cancelar manualmente Observador, Chuva de Doces e Carrossel.
 - `/observador arquivo adicionar`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
 - `/observador arquivo listar` e `/observador arquivo status`: administram a pool de mensagens arquivadas.
 - `/leaderboard`: publica ou atualiza os rankings.

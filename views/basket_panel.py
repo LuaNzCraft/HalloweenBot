@@ -22,7 +22,6 @@ class BasketPanelData:
     active_key: str
     accent_color: discord.Color
     icon_filename: str
-    user_name: str | None = None
     result_text: str | None = None
     result_title: str | None = None
 
@@ -53,7 +52,7 @@ class BasketOpenButton(discord.ui.Button):
 
 class BasketNavigationButton(discord.ui.Button):
     TARGETS = {
-        "profile": ("ProfileCog", "send_profile_panel", "common.not_loaded.profile"),
+        "profile": ("ProfileCog", "show_profile_panel", "common.not_loaded.profile"),
         "board": ("TabuleiroCog", "send_board_panel", "common.not_loaded.board"),
         "missions": ("MissaoCog", "send_mission_panel", "common.not_loaded.missions"),
     }
@@ -100,11 +99,13 @@ class BasketPanelView(discord.ui.LayoutView):
         self.open_lock = asyncio.Lock()
         self.message: discord.Message | None = None
         self.add_item(self._build_container())
+        self.add_item(self._build_navigation_row())
 
     def refresh(self, data: BasketPanelData) -> None:
         self.data = data
         self.clear_items()
         self.add_item(self._build_container())
+        self.add_item(self._build_navigation_row())
 
     async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
         if interaction.user.id == self.owner_id:
@@ -119,8 +120,6 @@ class BasketPanelView(discord.ui.LayoutView):
         data = self.data
         container = discord.ui.Container(accent_color=data.accent_color)
         heading = f"# {self.cog.i18n.t(self.locale, 'baskets.title')}"
-        if data.user_name:
-            heading += f"\n-# {discord.utils.escape_markdown(data.user_name)}"
         container.add_item(
             discord.ui.Section(
                 discord.ui.TextDisplay(
@@ -165,27 +164,26 @@ class BasketPanelView(discord.ui.LayoutView):
                 f"-# {self.cog.i18n.t(self.locale, f'baskets.mode.{data.active_key}.footer')}"
             )
         )
-        container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(
-            discord.ui.ActionRow(
-                BasketNavigationButton(
-                    "profile",
-                    self.cog.i18n.t(self.locale, "common.profile"),
-                    "👤",
-                ),
-                BasketNavigationButton(
-                    "board",
-                    self.cog.i18n.t(self.locale, "common.board"),
-                    "🎲",
-                ),
-                BasketNavigationButton(
-                    "missions",
-                    self.cog.i18n.t(self.locale, "common.missions"),
-                    "🕯️",
-                ),
-            )
-        )
         return container
+
+    def _build_navigation_row(self) -> discord.ui.ActionRow:
+        return discord.ui.ActionRow(
+            BasketNavigationButton(
+                "profile",
+                self.cog.i18n.t(self.locale, "common.profile"),
+                "👤",
+            ),
+            BasketNavigationButton(
+                "board",
+                self.cog.i18n.t(self.locale, "common.board"),
+                "🎲",
+            ),
+            BasketNavigationButton(
+                "missions",
+                self.cog.i18n.t(self.locale, "common.missions"),
+                "🕯️",
+            ),
+        )
 
     def _stock_text(self) -> str:
         inventory = self.data.inventory

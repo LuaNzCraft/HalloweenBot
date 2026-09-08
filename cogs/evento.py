@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
+import logging
 
 import discord
 from discord import app_commands
@@ -10,9 +12,10 @@ from repositories.admin_repo import AdminRepo
 from repositories.julgamento_repo import JulgamentoRepo
 from repositories.public_events_repo import PublicEventsRepo
 from services.audit_service import AuditService
+from views.event_panel import EventPanelView
 
 
-EVENT_COLOR = discord.Color.from_rgb(245, 122, 39)
+LOGGER = logging.getLogger(__name__)
 
 
 class EventoCog(commands.Cog):
@@ -26,60 +29,41 @@ class EventoCog(commands.Cog):
     @app_commands.command(name="evento", description="Admin: controla o evento Halloween no servidor.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
-    @app_commands.choices(
-        acao=[
-            app_commands.Choice(name="Comecar - ativa o evento no servidor", value="comecar"),
-            app_commands.Choice(name="Encerrar - fecha o evento no servidor", value="encerrar"),
-            app_commands.Choice(name="Pausar - pausa eventos publicos do chat", value="pausar"),
-            app_commands.Choice(name="Retomar - volta com os eventos publicos", value="retomar"),
-            app_commands.Choice(name="Cancelar - cancela o evento publico atual", value="cancelar"),
-            app_commands.Choice(name="Info - mostra o estado do evento", value="info"),
-        ]
-    )
-    @app_commands.describe(
-        acao="Escolha o que fazer no evento.",
-        horas="Usado em Pausar: por quantas horas os eventos publicos ficam pausados.",
-        motivo="Usado em Pausar: motivo opcional da pausa.",
-    )
-    async def evento(
-        self,
-        interaction: discord.Interaction,
-        acao: app_commands.Choice[str],
-        horas: app_commands.Range[int, 1, 24] = 2,
-        motivo: str | None = None,
-    ) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
+    async def evento(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        permissions = getattr(interaction.user, "guild_permissions", None)
+        if guild is None or not bool(getattr(permissions, "manage_guild", False)):
+            await interaction.response.send_message(
+                "Voce precisa de Gerenciar Servidor para abrir o painel do evento.",
+                ephemeral=True,
+            )
             return
 
         await interaction.response.defer(ephemeral=True)
+        try:
+            panel = await EventPanelView.create(
+                self,
+                guild=guild,
+                moderator_id=interaction.user.id,
+            )
+            sent = await interaction.followup.send(
+                view=panel,
+                ephemeral=True,
+                wait=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            panel.message = sent
+        except Exception:
+            LOGGER.exception("Falha ao abrir painel de evento da guild %s", guild.id)
+            await interaction.followup.send(
+                "Nao foi possivel abrir o painel do evento.",
+                ephemeral=True,
+            )
 
-        if acao.value == "comecar":
-            await self._comecar(interaction)
-            return
-        if acao.value == "encerrar":
-            await self._encerrar(interaction)
-            return
-        if acao.value == "pausar":
-            await self._pausar(interaction, int(horas), motivo)
-            return
-        if acao.value == "retomar":
-            await self._retomar(interaction)
-            return
-        if acao.value == "cancelar":
-            await self._cancelar(interaction)
-            return
-        if acao.value == "info":
-            await self._info(interaction)
-            return
-
-        await interaction.followup.send("Acao desconhecida.", ephemeral=True)
-
-    async def _comecar(self, interaction: discord.Interaction) -> None:
+    async def _comecar(self, interaction: discord.Interaction) -> tuple[bool, str]:
         runtime = await self.admin_repo.get_runtime(interaction.guild.id)
         if runtime.get("event_active"):
-            await interaction.followup.send("O evento global ja esta ativo neste servidor.", ephemeral=True)
-            return
+            return False, "O evento global ja esta ativo neste servidor."
 
         now = datetime.now(timezone.utc).isoformat()
         await self.admin_repo.set_runtime(
@@ -94,9 +78,12 @@ class EventoCog(commands.Cog):
         if public_events_cog is not None and hasattr(public_events_cog, "reset_chat_bonus_window"):
             public_events_cog.reset_chat_bonus_window(interaction.guild.id)
         await self._audit(interaction, "event.start", {"started_at": now})
-        await interaction.followup.send("Evento global iniciado no servidor.", ephemeral=True)
+        return True, "Evento global iniciado no servidor."
 
-    async def _encerrar(self, interaction: discord.Interaction) -> None:
+    async def _encerrar(self, interaction: discord.Interaction) -> tuple[bool, str]:
+        runtime = await self.admin_repo.get_runtime(interaction.guild.id)
+        if not runtime.get("event_active"):
+            return False, "O evento global ja esta encerrado neste servidor."
         now = datetime.now(timezone.utc).isoformat()
         await self.admin_repo.set_runtime(
             interaction.guild.id,
@@ -119,13 +106,17 @@ class EventoCog(commands.Cog):
             else:
                 await self.julgamento_repo.reset_runtime(interaction.guild.id)
         await self._audit(interaction, "event.end", {"ended_at": now})
-        await interaction.followup.send("Evento global encerrado no servidor.", ephemeral=True)
+        return True, "Evento global encerrado no servidor."
 
-    async def _pausar(self, interaction: discord.Interaction, horas: int, motivo: str | None) -> None:
+    async def _pausar(
+        self,
+        interaction: discord.Interaction,
+        horas: int,
+        motivo: str | None,
+    ) -> tuple[bool, str]:
         runtime = await self.admin_repo.get_runtime(interaction.guild.id)
         if not runtime.get("event_active"):
-            await interaction.followup.send("Ative o evento global antes de pausar os eventos publicos.", ephemeral=True)
-            return
+            return False, "Ative o evento global antes de pausar os eventos publicos."
 
         paused_until = datetime.now(timezone.utc) + timedelta(hours=horas)
         await self.admin_repo.set_runtime(
@@ -138,48 +129,66 @@ class EventoCog(commands.Cog):
             "event.pause",
             {"paused_until": paused_until.isoformat(), "hours": horas, "reason": motivo},
         )
-        await interaction.followup.send(
+        return (
+            True,
             f"Eventos publicos pausados ate {discord.utils.format_dt(paused_until, style='F')}.",
-            ephemeral=True,
         )
 
-    async def _retomar(self, interaction: discord.Interaction) -> None:
+    async def _retomar(self, interaction: discord.Interaction) -> tuple[bool, str]:
         runtime = await self.admin_repo.get_runtime(interaction.guild.id)
         if not runtime.get("event_active"):
-            await interaction.followup.send("O evento global ainda nao esta ativo.", ephemeral=True)
-            return
+            return False, "O evento global ainda nao esta ativo."
         if not runtime.get("events_paused_until"):
-            await interaction.followup.send("Os eventos publicos ja estao liberados.", ephemeral=True)
-            return
+            return False, "Os eventos publicos ja estao liberados."
 
         await self.admin_repo.set_runtime(interaction.guild.id, events_paused_until=None, pause_reason=None)
         await self._audit(interaction, "event.resume", {})
-        await interaction.followup.send("Eventos publicos retomados.", ephemeral=True)
+        return True, "Eventos publicos retomados."
 
-    async def _cancelar(self, interaction: discord.Interaction) -> None:
+    async def _cancelar(self, interaction: discord.Interaction) -> tuple[bool, str]:
         public_events_cog = self.bot.get_cog("PublicEventsCog")
         if public_events_cog is None or not hasattr(public_events_cog, "cancel_active_event"):
-            await interaction.followup.send("PublicEventsCog nao esta carregada no momento.", ephemeral=True)
-            return
+            return False, "PublicEventsCog nao esta carregada no momento."
 
         cancelled = await public_events_cog.cancel_active_event(interaction.guild)
 
         if not cancelled:
-            await interaction.followup.send("Nao ha evento publico ativo para cancelar.", ephemeral=True)
-            return
+            return False, "Nao ha evento publico ativo para cancelar."
 
         await self._audit(interaction, "event.public.cancel", {})
-        await interaction.followup.send("Evento publico cancelado.", ephemeral=True)
+        return True, "Evento publico cancelado."
 
-    async def _info(self, interaction: discord.Interaction) -> None:
-        runtime = await self.admin_repo.get_runtime(interaction.guild.id)
-        embed = discord.Embed(title="Evento Halloween", color=EVENT_COLOR)
-        embed.add_field(name="Ativo", value="Sim" if runtime["event_active"] else "Nao", inline=True)
-        embed.add_field(name="Iniciado em", value=self._format_timestamp(runtime["event_started_at"], "Nao iniciado"), inline=False)
-        embed.add_field(name="Encerrado em", value=self._format_timestamp(runtime["event_ended_at"], "Nao encerrado"), inline=False)
-        embed.add_field(name="Eventos pausados ate", value=self._format_timestamp(runtime["events_paused_until"], "Nao pausado"), inline=False)
-        embed.add_field(name="Motivo da pausa", value=runtime["pause_reason"] or "Nenhum", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
+    async def start_public_event(
+        self,
+        interaction: discord.Interaction,
+        event_name: str,
+    ) -> tuple[bool, str]:
+        public_events_cog = self.bot.get_cog("PublicEventsCog")
+        if public_events_cog is None or not hasattr(public_events_cog, "start_manual_event"):
+            return False, "PublicEventsCog nao esta carregada no momento."
+        return await public_events_cog.start_manual_event(interaction, event_name)
+
+    async def get_event_panel_state(self, guild_id: int) -> dict:
+        runtime, observer, spider, carousel = await asyncio.gather(
+            self.admin_repo.get_runtime(guild_id),
+            self.public_events_repo.get_observer_state(guild_id),
+            self.public_events_repo.get_spider_state(guild_id),
+            self.julgamento_repo.get_runtime(guild_id),
+        )
+        active_names: list[str] = []
+        if observer.get("active"):
+            active_names.append("Observador")
+        if spider.get("active"):
+            active_names.append("Chuva de Doces")
+        if carousel.get("active"):
+            active_names.append("Carrossel")
+
+        paused_until = self._parse_timestamp(runtime.get("events_paused_until"))
+        return {
+            "runtime": runtime,
+            "paused": paused_until is not None and paused_until > datetime.now(timezone.utc),
+            "active_public_event": ", ".join(active_names) if active_names else "Nenhum",
+        }
 
     def _format_timestamp(self, value: str | None, fallback: str) -> str:
         if not value:
@@ -191,6 +200,18 @@ class EventoCog(commands.Cog):
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         return discord.utils.format_dt(parsed, style="F")
+
+    @staticmethod
+    def _parse_timestamp(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
 
     async def _audit(self, interaction: discord.Interaction, action: str, payload: dict) -> None:
         await self.audit_service.log(

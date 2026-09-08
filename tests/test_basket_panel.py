@@ -41,7 +41,6 @@ class BasketPanelTests(unittest.IsolatedAsyncioTestCase):
                 active_key="cursed",
                 accent_color=BASKET_CURSED_COLOR,
                 icon_filename="cesta_amaldicoada_thumb.png",
-                user_name="Jogador",
             ),
         )
 
@@ -60,6 +59,9 @@ class BasketPanelTests(unittest.IsolatedAsyncioTestCase):
     async def test_panel_uses_v2_and_keeps_actions_inside_component_limit(self) -> None:
         self.assertTrue(self.panel.has_components_v2())
         self.assertLessEqual(self.panel.total_children_count, 40)
+        self.assertEqual(len(self.panel.children), 2)
+        self.assertIsInstance(self.panel.children[0], discord.ui.Container)
+        self.assertIsInstance(self.panel.children[1], discord.ui.ActionRow)
         self.assertEqual(
             self._custom_ids(),
             {
@@ -131,8 +133,8 @@ class BasketPanelTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await self.panel.interaction_check(interaction))
         interaction.response.send_message.assert_awaited_once()
 
-    async def test_profile_button_opens_a_separate_legacy_profile_response(self) -> None:
-        profile_cog = SimpleNamespace(send_profile_panel=AsyncMock())
+    async def test_profile_button_opens_the_v2_profile_panel(self) -> None:
+        profile_cog = SimpleNamespace(show_profile_panel=AsyncMock())
         interaction = SimpleNamespace(
             client=SimpleNamespace(get_cog=lambda name: profile_cog if name == "ProfileCog" else None),
         )
@@ -144,7 +146,7 @@ class BasketPanelTests(unittest.IsolatedAsyncioTestCase):
 
         await profile_button.callback(interaction)
 
-        profile_cog.send_profile_panel.assert_awaited_once_with(interaction, 10)
+        profile_cog.show_profile_panel.assert_awaited_once_with(interaction, 10)
 
     async def test_consecutive_open_actions_keep_the_same_live_panel(self) -> None:
         cog = object.__new__(BasketsCog)
