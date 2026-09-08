@@ -53,9 +53,7 @@ python main.py
 
 Depois de adicionar o bot ao servidor, use os comandos administrativos:
 
-- `/setup configurar`: define canais e cargos principais.
-- `/setup julgamento`: cria ou atualiza a estrutura do Carrossel.
-- `/setup ver`: mostra a configuração atual da guild.
+- `/setup`: abre um painel privado em Components V2 para consultar e configurar canais, cargos, Carrossel e sistema.
 - `/evento`: inicia, pausa ou encerra o evento.
 - `/observador arquivo adicionar`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
 - `/observador arquivo listar` e `/observador arquivo status`: administram a pool de mensagens arquivadas.
@@ -67,11 +65,7 @@ Os IDs definidos por `/setup` são persistidos no SQLite e têm prioridade sobre
 
 O arquivo `config/halloween.yml` controla economia, tempos, probabilidades, recompensas, pools, eventos, itens e comportamento do tabuleiro.
 
-Após alterar somente o YAML, use:
-
-```text
-/setup recarregar_config
-```
+Após alterar somente o YAML, abra `/setup`, vá até **Sistema** e clique em **Recarregar halloween.yml**.
 
 Uma configuração inválida é rejeitada e a última versão válida continua ativa. Alterações em Python exigem reinicialização do bot.
 

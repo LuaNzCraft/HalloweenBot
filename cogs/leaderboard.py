@@ -141,8 +141,7 @@ class LeaderboardCog(commands.Cog):
         except ValueError as exc:
             if str(exc) == "leaderboard_channel_not_configured":
                 await interaction.followup.send(
-                    "Configure o canal primeiro com "
-                    "`/setup configurar categoria:Canal tipo:Leaderboards canal:#canal`.",
+                    "Abra `/setup` e selecione o canal na pagina **Canais**.",
                     ephemeral=True,
                 )
                 return
@@ -151,7 +150,7 @@ class LeaderboardCog(commands.Cog):
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             await interaction.followup.send(
                 "Nao consegui acessar ou publicar no canal de leaderboard configurado. "
-                "Confira o canal e minhas permissoes com `/setup ver`.",
+                "Confira o canal na pagina **Resumo** de `/setup` e verifique minhas permissoes.",
                 ephemeral=True,
             )
             return

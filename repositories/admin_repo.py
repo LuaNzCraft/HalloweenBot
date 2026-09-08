@@ -115,13 +115,16 @@ class AdminRepo:
         config["event_channel_ids"] = json.loads(config.get("event_channel_ids") or "[]")
         return config
 
-    async def set_channel(self, guild_id: int, channel_type: str, channel_id: int) -> None:
+    async def set_channel(self, guild_id: int, channel_type: str, channel_id: int | None) -> None:
         await self._ensure_guild(guild_id)
         if channel_type == "leaderboard":
             await self._update_config_field(guild_id, "leaderboard_channel_id", channel_id)
         elif channel_type == "logs":
             await self._update_config_field(guild_id, "log_channel_id", channel_id)
         elif channel_type == "eventos":
+            if channel_id is None:
+                await self.set_event_channels(guild_id, [])
+                return
             config = await self.get_config(guild_id)
             channel_ids = list(dict.fromkeys([*config["event_channel_ids"], channel_id]))
             await self._update_config_field(guild_id, "event_channel_ids", json.dumps(channel_ids))
@@ -129,6 +132,11 @@ class AdminRepo:
             await self._update_config_field(guild_id, "julgamento_channel_id", channel_id)
         else:
             raise ValueError("unknown_channel_type")
+
+    async def set_event_channels(self, guild_id: int, channel_ids: list[int]) -> None:
+        await self._ensure_guild(guild_id)
+        unique_ids = list(dict.fromkeys(int(channel_id) for channel_id in channel_ids))
+        await self._update_config_field(guild_id, "event_channel_ids", json.dumps(unique_ids))
 
     async def set_julgamento_structure(
         self,
@@ -159,7 +167,7 @@ class AdminRepo:
         await self._update_config_field(guild_id, "event_channel_ids", json.dumps(channel_ids))
         return True
 
-    async def set_role(self, guild_id: int, role_type: str, role_id: int) -> None:
+    async def set_role(self, guild_id: int, role_type: str, role_id: int | None) -> None:
         await self._ensure_guild(guild_id)
         if role_type == "loja":
             await self._update_config_field(guild_id, "shop_role_id", role_id)

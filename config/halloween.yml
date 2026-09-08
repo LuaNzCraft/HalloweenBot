@@ -1,6 +1,6 @@
 # Halloween Bot - configuracao central
 #
-# Edite este arquivo e use /setup recarregar_config para aplicar as mudancas.
+# Edite este arquivo e recarregue-o pela pagina Sistema do painel /setup.
 # Perguntas, traducoes e missoes extensas continuam na pasta content/.
 # IDs de canais e cargos configurados por servidor continuam no SQLite.
 

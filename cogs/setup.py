@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 
 import discord
 from discord import app_commands
@@ -12,202 +13,126 @@ from services.audit_service import AuditService
 from services.config_service import ConfigError, get_config_service
 from services.item_catalog import ItemCatalog
 from services.shop_service import ShopService
+from views.setup_panel import SetupPanelView
 
 
+LOGGER = logging.getLogger(__name__)
 SETUP_COLOR = discord.Color.from_rgb(96, 181, 118)
+CHANNEL_TYPES = {"leaderboard", "logs", "julgamento"}
+ROLE_TYPES = {
+    "loja",
+    "tabuleiro_100",
+    "notificacao",
+    "cinefilo",
+    "julgamento_ativo",
+    "julgamento_mutado",
+    "julgamento_espectador",
+}
 
 
-class SetupCog(commands.GroupCog, name="setup"):
+class SetupCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.admin_repo = AdminRepo()
         self.julgamento_repo = JulgamentoRepo()
         self.audit_service = AuditService(bot, self.admin_repo)
 
-    async def setup_tipo_autocomplete(
-        self,
-        interaction: discord.Interaction,
-        current: str,
-    ) -> list[app_commands.Choice[str]]:
-        categoria = str(getattr(interaction.namespace, "categoria", "") or "").strip().lower()
-        choices_by_category = {
-            "canal": [
-                app_commands.Choice(name="Leaderboards", value="leaderboard"),
-                app_commands.Choice(name="Logs", value="logs"),
-                app_commands.Choice(name="Eventos", value="eventos"),
-                app_commands.Choice(name="Julgamento", value="julgamento"),
-            ],
-            "cargo": [
-                app_commands.Choice(name="Loja", value="loja"),
-                app_commands.Choice(name="Tabuleiro 100", value="tabuleiro_100"),
-                app_commands.Choice(name="Notificacao", value="notificacao"),
-                app_commands.Choice(name="Cinefilo", value="cinefilo"),
-                app_commands.Choice(name="Julgamento Ativo", value="julgamento_ativo"),
-                app_commands.Choice(name="Julgamento Mutado", value="julgamento_mutado"),
-                app_commands.Choice(name="Julgamento Espectador", value="julgamento_espectador"),
-            ],
-        }
-        available = choices_by_category.get(categoria, [])
-        if not current:
-            return available[:25]
-        current_lower = current.lower()
-        return [choice for choice in available if current_lower in choice.name.lower()][:25]
-
-    @app_commands.command(name="configurar", description="Configura canais e cargos principais do evento.")
+    @app_commands.command(name="setup", description="Abre o painel de configuracao do Halloween Bot.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
-    @app_commands.choices(
-        categoria=[
-            app_commands.Choice(name="Canal", value="canal"),
-            app_commands.Choice(name="Cargo", value="cargo"),
-        ]
-    )
-    @app_commands.describe(
-        categoria="Escolha se voce vai configurar um canal ou um cargo.",
-        tipo="Tipo especifico dentro da categoria escolhida.",
-        canal="Preencha quando o tipo for um canal.",
-        cargo="Preencha quando o tipo for um cargo.",
-    )
-    @app_commands.autocomplete(tipo=setup_tipo_autocomplete)
-    async def configurar(
-        self,
-        interaction: discord.Interaction,
-        categoria: app_commands.Choice[str],
-        tipo: str,
-        canal: discord.TextChannel | None = None,
-        cargo: discord.Role | None = None,
-    ) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
-
-        await interaction.response.defer(ephemeral=True)
-        channel_types = {"leaderboard", "logs", "eventos", "julgamento"}
-        role_types = {"loja", "tabuleiro_100", "notificacao", "cinefilo", "julgamento_ativo", "julgamento_mutado", "julgamento_espectador"}
-        tipo_value = tipo.strip().lower()
-
-        if categoria.value == "canal":
-            if tipo_value not in channel_types:
-                await interaction.followup.send(
-                    "Tipo de canal invalido. Escolha um tipo listado no autocomplete.",
-                    ephemeral=True,
-                )
-                return
-            if canal is None:
-                await interaction.followup.send(
-                    "Para configurar um canal, preencha o campo `canal`.",
-                    ephemeral=True,
-                )
-                return
-            if cargo is not None:
-                await interaction.followup.send(
-                    "Esse tipo usa apenas o campo `canal`.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.admin_repo.set_channel(interaction.guild.id, tipo_value, canal.id)
-            await self.audit_service.log(
-                guild_id=interaction.guild.id,
-                actor_id=interaction.user.id,
-                action="setup.channel.set",
-                payload={"type": tipo_value, "channel_id": canal.id},
-            )
-            await interaction.followup.send(f"Canal configurado: **{tipo}** -> {canal.mention}", ephemeral=True)
-            return
-
-        if categoria.value == "cargo":
-            if tipo_value not in role_types:
-                await interaction.followup.send(
-                    "Tipo de cargo invalido. Escolha um tipo listado no autocomplete.",
-                    ephemeral=True,
-                )
-                return
-            if cargo is None:
-                await interaction.followup.send(
-                    "Para configurar um cargo, preencha o campo `cargo`.",
-                    ephemeral=True,
-                )
-                return
-            if canal is not None:
-                await interaction.followup.send(
-                    "Esse tipo usa apenas o campo `cargo`.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.admin_repo.set_role(interaction.guild.id, tipo_value, cargo.id)
-            await self.audit_service.log(
-                guild_id=interaction.guild.id,
-                actor_id=interaction.user.id,
-                action="setup.role.set",
-                payload={"type": tipo_value, "role_id": cargo.id},
-            )
-            await interaction.followup.send(f"Cargo configurado: **{tipo}** -> {cargo.mention}", ephemeral=True)
-            return
-
-        await interaction.followup.send("Categoria de configuracao desconhecida.", ephemeral=True)
-
-    @app_commands.command(name="remover_canal_evento", description="Remove um canal da lista de canais de eventos.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    async def remover_canal_evento(
-        self,
-        interaction: discord.Interaction,
-        canal: discord.TextChannel,
-    ) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
-
-        await interaction.response.defer(ephemeral=True)
-        removed = await self.admin_repo.remove_event_channel(interaction.guild.id, canal.id)
-        if not removed:
-            await interaction.followup.send(
-                f"{canal.mention} nao estava na lista de canais de eventos.",
+    async def setup_panel(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        permissions = getattr(interaction.user, "guild_permissions", None)
+        if guild is None or not bool(getattr(permissions, "manage_guild", False)):
+            await interaction.response.send_message(
+                "Voce precisa de Gerenciar Servidor para abrir o setup.",
                 ephemeral=True,
             )
             return
-        await self.audit_service.log(
-            guild_id=interaction.guild.id,
-            actor_id=interaction.user.id,
-            action="setup.event_channel.remove",
-            payload={"channel_id": canal.id},
+
+        await interaction.response.defer(ephemeral=True)
+        try:
+            panel = await SetupPanelView.create(
+                self,
+                guild=guild,
+                moderator_id=interaction.user.id,
+            )
+            sent = await interaction.followup.send(
+                view=panel,
+                ephemeral=True,
+                wait=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            panel.message = sent
+        except Exception:
+            LOGGER.exception("Falha ao abrir painel de setup da guild %s", guild.id)
+            await interaction.followup.send(
+                "Nao foi possivel abrir o painel de setup.",
+                ephemeral=True,
+            )
+
+    async def update_setup_channel(
+        self,
+        guild_id: int | None,
+        actor_id: int,
+        channel_type: str,
+        channel_id: int | None,
+    ) -> None:
+        if guild_id is None or channel_type not in CHANNEL_TYPES:
+            raise ValueError("unknown_channel_type")
+        await self.admin_repo.set_channel(guild_id, channel_type, channel_id)
+        await self._audit_safely(
+            guild_id=guild_id,
+            actor_id=actor_id,
+            action="setup.channel.set",
+            payload={"type": channel_type, "channel_id": channel_id},
         )
-        await interaction.followup.send(f"Canal removido dos eventos: {canal.mention}", ephemeral=True)
 
-    @app_commands.command(name="ver", description="Mostra a configuracao atual do evento.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    async def ver(self, interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
+    async def update_event_channels(
+        self,
+        guild_id: int | None,
+        actor_id: int,
+        channel_ids: list[int],
+    ) -> None:
+        if guild_id is None:
+            raise ValueError("guild_required")
+        await self.admin_repo.set_event_channels(guild_id, channel_ids)
+        await self._audit_safely(
+            guild_id=guild_id,
+            actor_id=actor_id,
+            action="setup.event_channels.set",
+            payload={"channel_ids": channel_ids},
+        )
 
-        await interaction.response.defer(ephemeral=True)
-        config = await self.admin_repo.get_config(interaction.guild.id)
-        runtime = await self.admin_repo.get_runtime(interaction.guild.id)
-        embed = self._build_setup_embed(interaction.guild, config, runtime)
-        await interaction.followup.send(embed=embed, ephemeral=True)
+    async def update_setup_role(
+        self,
+        guild_id: int | None,
+        actor_id: int,
+        role_type: str,
+        role_id: int | None,
+    ) -> None:
+        if guild_id is None or role_type not in ROLE_TYPES:
+            raise ValueError("unknown_role_type")
+        await self.admin_repo.set_role(guild_id, role_type, role_id)
+        await self._audit_safely(
+            guild_id=guild_id,
+            actor_id=actor_id,
+            action="setup.role.set",
+            payload={"type": role_type, "role_id": role_id},
+        )
 
-    @app_commands.command(name="recarregar_config", description="Valida e recarrega o config/halloween.yml.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    async def recarregar_config(self, interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
+    async def reload_operational_config(
+        self,
+        interaction: discord.Interaction,
+    ) -> tuple[bool, str]:
+        if interaction.guild is None:
+            return False, "Use o setup dentro de um servidor."
 
-        await interaction.response.defer(ephemeral=True)
         service = get_config_service()
         try:
             config = service.reload()
         except ConfigError as exc:
-            await interaction.followup.send(
-                f"A configuracao nao foi aplicada. Corrija o erro abaixo:\n```text\n{exc}\n```",
-                ephemeral=True,
-            )
-            return
+            return False, f"A configuracao nao foi aplicada: `{str(exc)[:700]}`"
 
         refreshed: list[str] = []
         failures: list[str] = []
@@ -228,7 +153,7 @@ class SetupCog(commands.GroupCog, name="setup"):
             except Exception as exc:
                 failures.append(f"{cog_name}: {type(exc).__name__}: {exc}")
 
-        await self.audit_service.log(
+        await self._audit_safely(
             guild_id=interaction.guild.id,
             actor_id=interaction.user.id,
             action="setup.config.reload",
@@ -240,67 +165,46 @@ class SetupCog(commands.GroupCog, name="setup"):
             },
         )
         if failures:
-            details = "\n".join(failures)
-            await interaction.followup.send(
-                "O YAML foi validado e carregado, mas alguns componentes nao atualizaram:\n"
-                f"```text\n{details[:1500]}\n```",
-                ephemeral=True,
-            )
-            return
-        await interaction.followup.send(
-            (
-                f"Configuracao recarregada com sucesso. Versao do arquivo: "
-                f"**{config.get('config_version', 'nao definida')}**."
-            ),
-            ephemeral=True,
-        )
+            return False, "O YAML foi carregado, mas alguns componentes falharam: " + "; ".join(failures)[:700]
+        return True, f"Configuracao recarregada. Versao: **{config.get('config_version', 'nao definida')}**."
 
-    @app_commands.command(name="julgamento", description="Cria ou atualiza a estrutura do Carrossel.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    async def julgamento(self, interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
+    async def configure_carousel(self, interaction: discord.Interaction) -> tuple[bool, str]:
+        guild = interaction.guild
+        if guild is None:
+            return False, "Use o setup dentro de um servidor."
 
-        await interaction.response.defer(ephemeral=True)
-        julgamento_runtime = await self.julgamento_repo.get_runtime(interaction.guild.id)
+        julgamento_runtime = await self.julgamento_repo.get_runtime(guild.id)
         if julgamento_runtime.get("active"):
-            await interaction.followup.send(
-                "Nao e possivel refazer o setup enquanto o Carrossel esta ativo.",
-                ephemeral=True,
-            )
-            return
+            return False, "Nao e possivel refazer o setup enquanto o Carrossel esta ativo."
 
-        config = await self.admin_repo.get_config(interaction.guild.id)
+        config = await self.admin_repo.get_config(guild.id)
         active_role = await self._ensure_julgamento_role(
-            interaction.guild,
+            guild,
             config,
             "julgamento_active_role_id",
             "Participante Ativo",
             discord.Color.red(),
         )
         muted_role = await self._ensure_julgamento_role(
-            interaction.guild,
+            guild,
             config,
             "julgamento_muted_role_id",
             "Participante Mutado",
             discord.Color.dark_grey(),
         )
         spectator_role = await self._ensure_julgamento_role(
-            interaction.guild,
+            guild,
             config,
             "julgamento_spectator_role_id",
             "Espectador",
             discord.Color.light_grey(),
         )
         if not all((active_role, muted_role, spectator_role)):
-            await interaction.followup.send("Nao consegui criar ou localizar os cargos do Carrossel.", ephemeral=True)
-            return
+            return False, "Nao consegui criar ou localizar os cargos do Carrossel."
 
         overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.guild.me: discord.PermissionOverwrite(
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            guild.me: discord.PermissionOverwrite(
                 view_channel=True,
                 send_messages=True,
                 manage_channels=True,
@@ -327,15 +231,19 @@ class SetupCog(commands.GroupCog, name="setup"):
             ),
         }
 
-        existing_channel = interaction.guild.get_channel(int(config["julgamento_channel_id"])) if config.get("julgamento_channel_id") else None
+        existing_channel = (
+            guild.get_channel(int(config["julgamento_channel_id"]))
+            if config.get("julgamento_channel_id")
+            else None
+        )
         try:
             if isinstance(existing_channel, discord.TextChannel):
                 channel = existing_channel
                 merged_overwrites = dict(channel.overwrites)
                 merged_overwrites.update(overwrites)
-                await channel.edit(overwrites=merged_overwrites, reason="Atualizacao do Carrossel")
+                await channel.edit(overwrites=merged_overwrites, reason="Atualizacao do setup do Carrossel")
             else:
-                channel = await interaction.guild.create_text_channel(
+                channel = await guild.create_text_channel(
                     name="carrossel",
                     overwrites=overwrites,
                     reason="Criacao do canal do Carrossel",
@@ -350,7 +258,7 @@ class SetupCog(commands.GroupCog, name="setup"):
 
             thread = None
             if config.get("julgamento_thread_id"):
-                candidate = interaction.guild.get_thread(int(config["julgamento_thread_id"]))
+                candidate = guild.get_thread(int(config["julgamento_thread_id"]))
                 if candidate is None:
                     try:
                         fetched = await self.bot.fetch_channel(int(config["julgamento_thread_id"]))
@@ -373,28 +281,21 @@ class SetupCog(commands.GroupCog, name="setup"):
                     "as respostas oficiais acontecem no canal principal."
                 )
         except (discord.Forbidden, discord.HTTPException):
-            await interaction.followup.send(
-                "Nao consegui criar ou atualizar o canal e a thread do Carrossel. Verifique minhas permissoes.",
-                ephemeral=True,
-            )
-            return
+            return False, "Nao consegui criar ou atualizar o Carrossel. Verifique minhas permissoes."
 
         await self.admin_repo.set_julgamento_structure(
-            interaction.guild.id,
+            guild.id,
             channel_id=channel.id,
             thread_id=thread.id,
             base_message_id=base_message.id,
         )
-        await self.audit_service.log(
-            guild_id=interaction.guild.id,
+        await self._audit_safely(
+            guild_id=guild.id,
             actor_id=interaction.user.id,
             action="setup.julgamento.create",
             payload={"channel_id": channel.id, "thread_id": thread.id, "base_message_id": base_message.id},
         )
-        await interaction.followup.send(
-            f"Carrossel configurado: {channel.mention} | Thread: {thread.mention}",
-            ephemeral=True,
-        )
+        return True, f"Carrossel configurado: {channel.mention} | Thread: {thread.mention}"
 
     def _build_julgamento_setup_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -436,13 +337,13 @@ class SetupCog(commands.GroupCog, name="setup"):
             if role is not None:
                 return role
 
+        mapped_type = {
+            "julgamento_active_role_id": "julgamento_ativo",
+            "julgamento_muted_role_id": "julgamento_mutado",
+            "julgamento_spectator_role_id": "julgamento_espectador",
+        }[config_key]
         for role in guild.roles:
             if role.name == role_name:
-                mapped_type = {
-                    "julgamento_active_role_id": "julgamento_ativo",
-                    "julgamento_muted_role_id": "julgamento_mutado",
-                    "julgamento_spectator_role_id": "julgamento_espectador",
-                }[config_key]
                 await self.admin_repo.set_role(guild.id, mapped_type, role.id)
                 return role
 
@@ -451,51 +352,30 @@ class SetupCog(commands.GroupCog, name="setup"):
                 name=role_name,
                 colour=color,
                 mentionable=False,
-                reason="Criacao automatica dos cargos do Julgamento",
+                reason="Criacao automatica dos cargos do Carrossel",
             )
         except (discord.Forbidden, discord.HTTPException):
             return None
-        mapped_type = {
-            "julgamento_active_role_id": "julgamento_ativo",
-            "julgamento_muted_role_id": "julgamento_mutado",
-            "julgamento_spectator_role_id": "julgamento_espectador",
-        }[config_key]
         await self.admin_repo.set_role(guild.id, mapped_type, role.id)
         return role
 
-    def _build_setup_embed(self, guild: discord.Guild, config: dict, runtime: dict) -> discord.Embed:
-        embed = discord.Embed(title="Setup Halloween", color=SETUP_COLOR)
-        embed.add_field(name="Evento ativo", value="Sim" if runtime["event_active"] else "Nao", inline=True)
-        embed.add_field(name="Pausado ate", value=runtime["events_paused_until"] or "Nao pausado", inline=True)
-        embed.add_field(name="Canal de leaderboard", value=self._channel(guild, config["leaderboard_channel_id"]), inline=False)
-        embed.add_field(name="Canal de logs", value=self._channel(guild, config["log_channel_id"]), inline=False)
-        event_channels = config["event_channel_ids"]
-        embed.add_field(
-            name="Canais de eventos",
-            value="\n".join(self._channel(guild, channel_id) for channel_id in event_channels) if event_channels else "Nenhum",
-            inline=False,
-        )
-        embed.add_field(name="Canal do Carrossel", value=self._channel(guild, config["julgamento_channel_id"]), inline=False)
-        embed.add_field(name="Cargo da Loja", value=self._role(guild, config["shop_role_id"]), inline=True)
-        embed.add_field(name="Cargo Tabuleiro 100", value=self._role(guild, config["board_100_role_id"]), inline=True)
-        embed.add_field(name="Cargo de notificacao", value=self._role(guild, config["notification_role_id"]), inline=True)
-        embed.add_field(name="Cargo Cinefilo", value=self._role(guild, config["cinefilo_role_id"]), inline=True)
-        embed.add_field(name="Carrossel Ativo", value=self._role(guild, config["julgamento_active_role_id"]), inline=True)
-        embed.add_field(name="Carrossel Mutado", value=self._role(guild, config["julgamento_muted_role_id"]), inline=True)
-        embed.add_field(name="Carrossel Espectador", value=self._role(guild, config["julgamento_spectator_role_id"]), inline=True)
-        return embed
-
-    def _channel(self, guild: discord.Guild, channel_id: int | None) -> str:
-        if not channel_id:
-            return "Nao configurado"
-        channel = guild.get_channel(channel_id)
-        return channel.mention if channel else f"`{channel_id}`"
-
-    def _role(self, guild: discord.Guild, role_id: int | None) -> str:
-        if not role_id:
-            return "Nao configurado"
-        role = guild.get_role(role_id)
-        return role.mention if role else f"`{role_id}`"
+    async def _audit_safely(
+        self,
+        *,
+        guild_id: int,
+        actor_id: int,
+        action: str,
+        payload: dict,
+    ) -> None:
+        try:
+            await self.audit_service.log(
+                guild_id=guild_id,
+                actor_id=actor_id,
+                action=action,
+                payload=payload,
+            )
+        except Exception:
+            LOGGER.exception("Configuracao salva, mas a auditoria falhou: %s", action)
 
 
 async def setup(bot: commands.Bot) -> None:
