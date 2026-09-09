@@ -10,9 +10,11 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Loja em Components V2, separada por moeda, com compras rápidas de 1x, 5x e 10x.
 - Inventário e Cestas de Doce com recompensas configuráveis e painel em Components V2.
 - Tabuleiro animado com casas de doce, travessura, maldição e recompensas por volta.
-- Missões pessoais, globais e de evento.
+- Missões pessoais, globais e de evento em um painel Components V2 com resumo e abas.
 - Perfil em Components V2, leaderboard e sistema de Doce ou Travessura entre jogadores.
-- Eventos públicos como Observador, Arquivos do Observador, Chuva de Doces, Trem Fantasma e Caça aos Doces.
+- Guia `/help` em Components V2, com categorias e navegação compacta.
+- Observador em Components V2, com cards visuais para anagramas, imagens de filmes e mensagens arquivadas.
+- Eventos públicos como Sinais Corrompidos, Arquivos do Observador, Chuva de Doces, Trem Fantasma e Caça aos Doces.
 - Carrossel competitivo com inscrições, espectadores, rodadas e premiação.
 - Efeitos temporários com expiração, persistência e recuperação após reinício.
 - Localização em português do Brasil e inglês.
@@ -54,11 +56,10 @@ python main.py
 
 Depois de adicionar o bot ao servidor, use os comandos administrativos:
 
-- `/setup`: abre um painel privado em Components V2 para consultar e configurar canais, cargos, Carrossel e sistema.
+- `/setup`: abre um painel privado em Components V2 para consultar e configurar canais, cargos, Carrossel, rankings e sistema.
 - `/evento`: painel administrativo para acompanhar, iniciar, pausar e encerrar o evento, alem de iniciar ou cancelar manualmente Observador, Chuva de Doces e Carrossel.
 - `/observador arquivo adicionar`: transforma uma mensagem do servidor em uma rodada visual; os jogadores tentam identificar livremente o autor.
 - `/observador arquivo listar` e `/observador arquivo status`: administram a pool de mensagens arquivadas.
-- `/leaderboard`: publica ou atualiza os rankings.
 
 Os IDs definidos por `/setup` são persistidos no SQLite e têm prioridade sobre `guild_defaults`.
 
@@ -72,7 +73,7 @@ Uma configuração inválida é rejeitada e a última versão válida continua a
 
 ## Comandos para jogadores
 
-- `/help`: apresenta o funcionamento do evento.
+- `/help`: abre o guia do evento em um painel privado com categorias.
 - `/perfil`: mostra perfil, recursos e inventário.
 - `/loja`: abre a loja ou compra um item.
 - `/usar`: utiliza um item do inventário.

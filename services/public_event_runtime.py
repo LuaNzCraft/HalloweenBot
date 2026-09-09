@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from views.public_event_views import ObserverTranslateView, PublicEventTranslateView
+from views.public_event_views import PublicEventTranslateView
 
 
 if TYPE_CHECKING:
@@ -60,11 +60,17 @@ class PublicEventRuntimeService:
             for answer in cog._expand_observer_answers(question)
         ]
         display_text = cog._resolve_observer_display_text(question, match_mode)
-        attachment_path = cog._resolve_observer_image_path(question)
-        attachment_filename = cog._resolve_observer_attachment_filename(question)
+        if match_mode == "anagram":
+            attachment_path, attachment_filename = await cog._render_observer_anagram_attachment(
+                question,
+                display_text,
+            )
+        else:
+            attachment_path = cog._resolve_observer_image_path(question)
+            attachment_filename = cog._resolve_observer_attachment_filename(question)
         channel = channels[0]
-        embed = cog._build_observer_question_embed(
-            str(question["question"]),
+        panel = cog._build_observer_question_panel(
+            question,
             expires_at,
             match_mode,
             display_text,
@@ -74,14 +80,14 @@ class PublicEventRuntimeService:
         message = await cog._send_observer_payload(
             channel,
             observer_cfg,
-            embed=embed,
-            view=ObserverTranslateView(cog, question, expires_at),
+            view=panel,
             attachment_path=attachment_path,
             attachment_filename=attachment_filename,
             wait=True,
         )
         if message is None:
             return False, "Nao foi possivel publicar o Observador no canal configurado."
+        panel.message = message
         await cog.public_events_repo.set_observer_state(
             guild.id,
             active=True,
@@ -152,34 +158,21 @@ class PublicEventRuntimeService:
             answer_label, answer_value = cog._resolve_observer_timeout_answer(question)
             revealed_path = cog._resolve_observer_revealed_image_path(question)
             revealed_filename = cog._resolve_observer_revealed_attachment_filename(question)
-            timeout_embed = cog._build_observer_timeout_embed(
+            timeout_panel = cog._build_observer_timeout_panel(
+                question,
                 answer_label=answer_label,
                 answer_value=answer_value,
+                attachment_filename=revealed_filename,
             )
-            if revealed_path is not None and revealed_filename:
-                timeout_embed.set_image(url=f"attachment://{revealed_filename}")
             if isinstance(channel, (discord.TextChannel, discord.Thread)):
                 try:
-                    edited = False
-                    message_id = int(state.get("message_id") or 0)
-                    if message_id > 0 and revealed_path is None:
-                        try:
-                            original_message = await channel.fetch_message(message_id)
-                            await original_message.edit(
-                                embed=timeout_embed,
-                                view=None,
-                            )
-                            edited = True
-                        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                            edited = False
-                    if not edited:
-                        await cog._send_observer_payload(
-                            channel,
-                            observer_cfg,
-                            embed=timeout_embed,
-                            attachment_path=revealed_path,
-                            attachment_filename=revealed_filename,
-                        )
+                    await cog._send_observer_payload(
+                        channel,
+                        observer_cfg,
+                        view=timeout_panel,
+                        attachment_path=revealed_path,
+                        attachment_filename=revealed_filename,
+                    )
                 except discord.HTTPException:
                     pass
             await cog.public_events_repo.set_observer_state(
@@ -249,18 +242,21 @@ class PublicEventRuntimeService:
                     question_id=state.get("question_id"),
                     question_text=state.get("question_text"),
                 )
-                winner_embed = cog._build_observer_winner_embed(message.author.mention, summary)
-                if question is not None and cog.observer_catalog.kind(question) == "chat_quote":
-                    answer_label, answer_value = cog._resolve_observer_timeout_answer(question)
-                    winner_embed.add_field(name=answer_label, value=answer_value, inline=False)
+                answer_label, answer_value = cog._resolve_observer_timeout_answer(question)
                 revealed_path = cog._resolve_observer_revealed_image_path(question)
                 revealed_filename = cog._resolve_observer_revealed_attachment_filename(question)
-                if revealed_path is not None and revealed_filename:
-                    winner_embed.set_image(url=f"attachment://{revealed_filename}")
+                winner_panel = cog._build_observer_winner_panel(
+                    question,
+                    winner_mention=message.author.mention,
+                    summary=summary,
+                    answer_label=answer_label,
+                    answer_value=answer_value,
+                    attachment_filename=revealed_filename,
+                )
                 await cog._send_observer_payload(
                     message.channel,
                     config,
-                    embed=winner_embed,
+                    view=winner_panel,
                     attachment_path=revealed_path,
                     attachment_filename=revealed_filename,
                 )

@@ -102,11 +102,19 @@ class ItemsRuntimeService:
         return self.find_observer_question(question_id=None, question_text=question_text)
 
     def select_hint_answer(self, question: dict, locale: str) -> str:
-        localized_keys = (
-            ("hint_answer_en", "answer_en", "display_text_en")
-            if locale == "en-US"
-            else ("hint_answer_pt", "answer_pt", "display_text")
-        )
+        is_anagram = self.observer_catalog.kind(question) == "anagram"
+        if locale == "en-US":
+            localized_keys = (
+                ("hint_answer_en", "answer_en")
+                if is_anagram
+                else ("hint_answer_en", "answer_en", "display_text_en")
+            )
+        else:
+            localized_keys = (
+                ("hint_answer_pt", "answer_pt")
+                if is_anagram
+                else ("hint_answer_pt", "answer_pt", "display_text")
+            )
         for key in localized_keys:
             value = str(question.get(key) or "").strip()
             if value:
@@ -114,6 +122,8 @@ class ItemsRuntimeService:
         answers = [str(answer).strip() for answer in question.get("answers", []) if str(answer).strip()]
         if not answers:
             return ""
+        if is_anagram:
+            return answers[0]
         return min(answers, key=lambda answer: (len(answer), answer.lower()))
 
     def build_hint_initials(self, answer: str) -> str:

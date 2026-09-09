@@ -26,6 +26,7 @@ from services.config_service import get_carousel_config, get_main_config, get_pu
 from services.public_event_runtime import PublicEventRuntimeService
 from services.audit_service import AuditService
 from services.event_runtime_service import EventRuntimeService
+from services.observer_anagram_card_service import ObserverAnagramCardService
 from services.observer_archive_service import ObserverArchiveService
 from services.observer_question_catalog import ObserverQuestionCatalog
 from services.i18n_service import I18nService
@@ -34,7 +35,7 @@ from services.mission_service import MissionService
 from services.public_event_texts import PublicEventTextsService
 from services.reward_settlement_service import RewardSettlementService
 from repositories.users_repo import UsersRepo
-from views.public_event_views import ObserverTranslateView, PublicEventTranslateView, ChatMessageBonusView
+from views.public_event_views import ObserverPanelView, PublicEventTranslateView, ChatMessageBonusView
 from utils.event_config import get_achievements_config
 
 
@@ -70,6 +71,7 @@ class PublicEventsCog(commands.Cog):
         self.chat_candy_runtime = ChatCandyRuntimeService()
         self.public_event_runtime = PublicEventRuntimeService()
         self.observer_catalog = ObserverQuestionCatalog(ROOT_DIR)
+        self.observer_anagram_card_service = ObserverAnagramCardService(ROOT_DIR)
         self.observer_archive_service = ObserverArchiveService(ROOT_DIR)
         self.users_repo = UsersRepo()
         self.i18n = I18nService(self.users_repo)
@@ -814,7 +816,7 @@ class PublicEventsCog(commands.Cog):
         *,
         content: str | None = None,
         embed: discord.Embed | None = None,
-        view: discord.ui.View | None = None,
+        view: discord.ui.View | discord.ui.LayoutView | None = None,
         attachment_path: Path | None = None,
         attachment_filename: str | None = None,
         wait: bool = False,
@@ -828,12 +830,15 @@ class PublicEventsCog(commands.Cog):
             )
             try:
                 send_kwargs = {
-                    "content": content,
-                    "embed": embed,
                     "username": str(observer_cfg.get("webhook_name") or "Observador"),
                     "thread": channel if isinstance(channel, discord.Thread) else discord.utils.MISSING,
                     "wait": wait,
+                    "allowed_mentions": discord.AllowedMentions.none(),
                 }
+                if content is not None:
+                    send_kwargs["content"] = content
+                if embed is not None:
+                    send_kwargs["embed"] = embed
                 if view is not None:
                     send_kwargs["view"] = view
                 if attachment is not None:
@@ -853,7 +858,13 @@ class PublicEventsCog(commands.Cog):
             else None
         )
         try:
-            send_kwargs = {"content": content, "embed": embed, "view": view}
+            send_kwargs = {"allowed_mentions": discord.AllowedMentions.none()}
+            if content is not None:
+                send_kwargs["content"] = content
+            if embed is not None:
+                send_kwargs["embed"] = embed
+            if view is not None:
+                send_kwargs["view"] = view
             if attachment is not None:
                 send_kwargs["file"] = attachment
             return await channel.send(**send_kwargs)
@@ -1467,6 +1478,22 @@ class PublicEventsCog(commands.Cog):
             return f"observer_{public_id}_hidden.png"
         return self.observer_catalog.attachment_filename(question)
 
+    async def _render_observer_anagram_attachment(
+        self,
+        question: dict,
+        display_text: str | None,
+    ) -> tuple[Path | None, str | None]:
+        if not display_text:
+            return None, None
+        try:
+            return await self.observer_anagram_card_service.render(
+                str(question.get("id") or ""),
+                display_text,
+            )
+        except (OSError, ValueError):
+            LOGGER.exception("Falha ao renderizar card de anagrama do Observador")
+            return None, None
+
     def _resolve_observer_revealed_image_path(self, question: dict | None) -> Path | None:
         if not question or self.observer_catalog.kind(question) != "chat_quote":
             return None
@@ -1517,7 +1544,7 @@ class PublicEventsCog(commands.Cog):
         if bool(question.get("exact_match")):
             return "exact"
         mode = str(question.get("match_mode") or "normalized").strip().lower()
-        if mode in {"exact", "normalized", "spaces", "spoiler"}:
+        if mode in {"exact", "normalized", "spaces", "spoiler", "anagram"}:
             return mode
         return "normalized"
 
@@ -1538,7 +1565,7 @@ class PublicEventsCog(commands.Cog):
         return " ".join(no_punctuation.split())
 
     def _resolve_observer_display_text(self, question: dict, match_mode: str) -> str | None:
-        if match_mode not in {"spaces", "spoiler"}:
+        if match_mode not in {"spaces", "spoiler", "anagram"}:
             return None
         display_text = str(question.get("display_text") or "").strip()
         if not display_text:
@@ -1549,10 +1576,12 @@ class PublicEventsCog(commands.Cog):
             return None
         if match_mode == "spaces":
             return self._observer_disguise_spaces(display_text)
+        if match_mode == "anagram":
+            return display_text
         return self._observer_spoiler_words(display_text)
 
     def _resolve_observer_display_text_en(self, question: dict, match_mode: str) -> str | None:
-        if match_mode not in {"spaces", "spoiler"}:
+        if match_mode not in {"spaces", "spoiler", "anagram"}:
             return None
         display_text = str(question.get("display_text_en") or "").strip()
         if not display_text:
@@ -1561,6 +1590,8 @@ class PublicEventsCog(commands.Cog):
             return None
         if match_mode == "spaces":
             return self._observer_disguise_spaces(display_text)
+        if match_mode == "anagram":
+            return display_text
         return self._observer_spoiler_words(display_text)
 
     def _find_observer_question(
@@ -1615,7 +1646,12 @@ class PublicEventsCog(commands.Cog):
         pool_name = str(question.get("answer_pool") or "").strip().lower()
         if pool_name == "horror_movies":
             return "Respostas aceitas", "Varios titulos de filmes de terror eram aceitos nesta pergunta."
-        for key in ("hint_answer_pt", "display_text", "answer_pt"):
+        answer_keys = (
+            ("hint_answer_pt", "answer_pt")
+            if self.observer_catalog.kind(question) == "anagram"
+            else ("hint_answer_pt", "display_text", "answer_pt")
+        )
+        for key in answer_keys:
             value = str(question.get(key) or "").strip()
             if value:
                 return "Resposta correta", f"`{value}`"
@@ -1684,50 +1720,105 @@ class PublicEventsCog(commands.Cog):
             options=options,
         )
 
-    def _build_observer_question_embed(
+    def _build_observer_question_panel(
         self,
-        question_text: str,
+        question: dict,
         deadline_at: datetime,
         match_mode: str,
         display_text: str | None,
         difficulty: str,
         attachment_filename: str | None = None,
-    ) -> discord.Embed:
-        return self.texts.build_observer_question_embed(
-            self.OBSERVER_COLOR,
-            question_text=question_text,
+    ) -> ObserverPanelView:
+        content = self.texts.build_observer_question_panel_content(
+            question_text=str(question["question"]),
             deadline_at=deadline_at,
             match_mode=match_mode,
             display_text=display_text,
             difficulty=difficulty,
+            question_kind=self.observer_catalog.kind(question),
+            has_attachment=bool(attachment_filename),
+        )
+        timeout_seconds = max(1.0, (deadline_at - discord.utils.utcnow()).total_seconds())
+        return ObserverPanelView(
+            content,
+            color=self.OBSERVER_COLOR,
             attachment_filename=attachment_filename,
+            cog=self,
+            question=question,
+            deadline_at=deadline_at,
+            timeout=timeout_seconds,
         )
 
-    def build_observer_translation_embed(self, question: dict, deadline_at: datetime) -> discord.Embed | None:
+    def build_observer_translation_panel(
+        self,
+        question: dict,
+        deadline_at: datetime | None,
+    ) -> ObserverPanelView | None:
         question_en = str(question.get("question_en") or "").strip()
-        if not question_en:
+        if not question_en or deadline_at is None:
             return None
         match_mode = self._resolve_observer_match_mode(question)
         difficulty = self._resolve_observer_difficulty(question)
         display_text = self._resolve_observer_display_text_en(question, match_mode)
-        return self.texts.build_observer_translation_embed(
-            self.OBSERVER_COLOR,
+        content = self.texts.build_observer_translation_panel_content(
             question_en=question_en,
             deadline_at=deadline_at,
             match_mode=match_mode,
             display_text=display_text,
             difficulty=difficulty,
+            question_kind=self.observer_catalog.kind(question),
+        )
+        return ObserverPanelView(
+            content,
+            color=self.OBSERVER_COLOR,
+            timeout=None,
         )
 
-    def _build_observer_timeout_embed(self, *, answer_label: str, answer_value: str) -> discord.Embed:
-        return self.texts.build_observer_timeout_embed(
-            self.OBSERVER_COLOR,
+    def _build_observer_timeout_panel(
+        self,
+        question: dict | None,
+        *,
+        answer_label: str,
+        answer_value: str,
+        attachment_filename: str | None = None,
+    ) -> ObserverPanelView:
+        question_kind = self.observer_catalog.kind(question) if question is not None else "text"
+        content = self.texts.build_observer_timeout_panel_content(
             answer_label=answer_label,
             answer_value=answer_value,
+            question_kind=question_kind,
+        )
+        return ObserverPanelView(
+            content,
+            color=self.OBSERVER_COLOR,
+            attachment_filename=attachment_filename,
+            timeout=None,
         )
 
-    def _build_observer_winner_embed(self, winner_mention: str, summary: str) -> discord.Embed:
-        return self.texts.build_observer_winner_embed(self.OBSERVER_COLOR, winner_mention, summary)
+    def _build_observer_winner_panel(
+        self,
+        question: dict | None,
+        *,
+        winner_mention: str,
+        summary: str,
+        answer_label: str,
+        answer_value: str,
+        attachment_filename: str | None = None,
+    ) -> ObserverPanelView:
+        question_kind = self.observer_catalog.kind(question) if question is not None else "text"
+        content = self.texts.build_observer_winner_panel_content(
+            winner_mention=winner_mention,
+            summary=summary,
+            answer_label=answer_label,
+            answer_value=answer_value,
+            question_kind=question_kind,
+        )
+        return ObserverPanelView(
+            content,
+            color=self.OBSERVER_COLOR,
+            attachment_filename=attachment_filename,
+            timeout=None,
+        )
 
     def _build_tempo_unavailable_embed(self, title: str, description: str) -> discord.Embed:
         return self.texts.build_tempo_unavailable_embed(title, description)

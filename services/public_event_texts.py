@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import discord
+
+
+@dataclass(frozen=True, slots=True)
+class ObserverPanelContent:
+    title: str
+    description: str
+    metadata: str | None = None
+    details: str | None = None
+    footer: str | None = None
+    attachment_description: str | None = None
 
 
 class PublicEventTextsService:
@@ -206,23 +217,30 @@ class PublicEventTextsService:
         embed.add_field(name="Falta", value=discord.utils.format_dt(starts_at, style="R"), inline=False)
         return embed
 
-    def build_observer_question_embed(
+    def build_observer_question_panel_content(
         self,
-        color: discord.Color,
         *,
         question_text: str,
         deadline_at: datetime,
         match_mode: str,
         display_text: str | None,
         difficulty: str,
-        attachment_filename: str | None = None,
-    ) -> discord.Embed:
+        question_kind: str,
+        has_attachment: bool,
+    ) -> ObserverPanelContent:
         exact = match_mode in {"exact", "spaces", "spoiler"}
-        validation = "Exato - acentos e maiusculas nao importam." if exact else "Acentos e pontuacao podem variar."
+        if match_mode == "anagram":
+            validation = "Anagrama — acentos e pontuação podem variar."
+        else:
+            validation = (
+                "Texto exato — acentos e maiúsculas não importam."
+                if exact
+                else "Acentos e pontuação podem variar."
+            )
         difficulty_label = {
-            "easy": "Easy",
-            "medium": "Medium",
-            "hard": "Hard",
+            "easy": "Fácil",
+            "medium": "Média",
+            "hard": "Difícil",
         }.get(difficulty.lower(), difficulty.capitalize())
 
         description_lines = [f"> **{question_text}**"]
@@ -230,44 +248,48 @@ class PublicEventTextsService:
             description_lines.append(f"\n> Digite exatamente: **'{display_text}'**")
         if match_mode == "spoiler" and display_text:
             description_lines.append(f"\n> Revele e digite: {display_text}")
+        if match_mode == "anagram":
+            description_lines.append("\n> **Reorganize o sinal interceptado.**")
+            if display_text and not has_attachment:
+                description_lines.append(f"> Sinal: **{display_text}**")
 
-        embed = discord.Embed(
-            title="📹 O Observador esta gravando",
+        title = {
+            "anagram": "🔴 REC · SINAIS CORROMPIDOS",
+            "chat_quote": "🔴 REC · ARQUIVO DO OBSERVADOR",
+            "movie_image": "🔴 REC · IMAGEM INTERCEPTADA",
+        }.get(question_kind, "🔴 REC · TRANSMISSÃO DO OBSERVADOR")
+        attachment_description = {
+            "anagram": "Sinal corrompido interceptado pelo Observador.",
+            "chat_quote": "Arquivo com a identidade do autor ocultada.",
+            "movie_image": "Imagem interceptada pelo Observador.",
+        }.get(question_kind)
+        return ObserverPanelContent(
+            title=title,
             description="\n".join(description_lines),
-            color=color,
+            metadata=(
+                f"**Tempo:** {discord.utils.format_dt(deadline_at, style='R')}"
+                f" • **Dificuldade:** {difficulty_label}"
+            ),
+            details=f"-# Validação: {validation}",
+            footer="Responda no chat antes que a gravação seja encerrada.",
+            attachment_description=attachment_description,
         )
-        embed.add_field(
-            name="Tempo",
-            value=discord.utils.format_dt(deadline_at, style="R"),
-            inline=True,
-        )
-        embed.add_field(
-            name="Dificuldade",
-            value=difficulty_label,
-            inline=True,
-        )
-        embed.add_field(
-            name="Validacao",
-            value=validation,
-            inline=False,
-        )
-        if attachment_filename:
-            embed.set_image(url=f"attachment://{attachment_filename}")
-        embed.set_footer(text="Responda antes que a gravacao seja encerrada.")
-        return embed
 
-    def build_observer_translation_embed(
+    def build_observer_translation_panel_content(
         self,
-        color: discord.Color,
         *,
         question_en: str,
         deadline_at: datetime,
         match_mode: str,
         display_text: str | None,
         difficulty: str,
-    ) -> discord.Embed:
+        question_kind: str,
+    ) -> ObserverPanelContent:
         exact = match_mode in {"exact", "spaces", "spoiler"}
-        validation = "Exact text required. Case does not matter." if exact else "Accents and punctuation may vary."
+        if match_mode == "anagram":
+            validation = "Anagram - accents and punctuation may vary."
+        else:
+            validation = "Exact text required. Case does not matter." if exact else "Accents and punctuation may vary."
         difficulty_label = {
             "easy": "Easy",
             "medium": "Medium",
@@ -279,55 +301,75 @@ class PublicEventTextsService:
             description_lines.append(f"\n> Type exactly: **'{display_text}'**")
         if match_mode == "spoiler" and display_text:
             description_lines.append(f"\n> Reveal and type: {display_text}")
+        if match_mode == "anagram":
+            description_lines.append("\n> **Rearrange the intercepted signal.**")
 
-        embed = discord.Embed(
-            title="📹 The Observer is recording",
+        title = {
+            "anagram": "🔴 REC · CORRUPTED SIGNALS",
+            "chat_quote": "🔴 REC · OBSERVER FILE",
+            "movie_image": "🔴 REC · INTERCEPTED IMAGE",
+        }.get(question_kind, "🔴 REC · OBSERVER TRANSMISSION")
+        return ObserverPanelContent(
+            title=title,
             description="\n".join(description_lines),
-            color=color,
+            metadata=(
+                f"**Time:** {discord.utils.format_dt(deadline_at, style='R')}"
+                f" • **Difficulty:** {difficulty_label}"
+            ),
+            details=f"-# Validation: {validation}",
+            footer="This translation is private to you.",
         )
-        embed.add_field(
-            name="Time",
-            value=discord.utils.format_dt(deadline_at, style="R"),
-            inline=True,
-        )
-        embed.add_field(
-            name="Difficulty",
-            value=difficulty_label,
-            inline=True,
-        )
-        embed.add_field(
-            name="Validation",
-            value=validation,
-            inline=False,
-        )
-        embed.set_footer(text="This translation is private to you.")
-        return embed
 
-    def build_observer_timeout_embed(
+    def build_observer_timeout_panel_content(
         self,
-        color: discord.Color,
         *,
         answer_label: str,
         answer_value: str,
-    ) -> discord.Embed:
-        embed = discord.Embed(
-            title="📼 *gravacao encerrada*",
-            description="Ninguem respondeu antes de o arquivo ser fechado.",
-            color=color,
+        question_kind: str,
+    ) -> ObserverPanelContent:
+        title = {
+            "anagram": "📼 SINAL ENCERRADO",
+            "chat_quote": "📼 ARQUIVO ENCERRADO",
+        }.get(question_kind, "📼 GRAVAÇÃO ENCERRADA")
+        return ObserverPanelContent(
+            title=title,
+            description="Ninguém respondeu antes de o arquivo ser fechado.",
+            details=f"**{answer_label}**\n{answer_value}",
+            footer="O Observador continua atento.",
+            attachment_description=(
+                "Arquivo revelado com a identidade confirmada."
+                if question_kind == "chat_quote"
+                else None
+            ),
         )
-        embed.add_field(name=answer_label, value=answer_value, inline=False)
-        embed.set_footer(text="O Observador continua atento.")
-        return embed
 
-    def build_observer_winner_embed(self, color: discord.Color, winner_mention: str, summary: str) -> discord.Embed:
-        embed = discord.Embed(
-            title="Resposta certa.",
+    def build_observer_winner_panel_content(
+        self,
+        *,
+        winner_mention: str,
+        summary: str,
+        answer_label: str,
+        answer_value: str,
+        question_kind: str,
+    ) -> ObserverPanelContent:
+        title = {
+            "anagram": "📼 SINAL RECONSTRUÍDO",
+            "chat_quote": "📼 IDENTIDADE CONFIRMADA",
+        }.get(question_kind, "📼 RESPOSTA CONFIRMADA")
+        return ObserverPanelContent(
+            title=title,
             description=f"{winner_mention} foi o primeiro a acertar.",
-            color=color,
+            details=(
+                f"**{answer_label}**\n{answer_value}\n\n"
+                f"**Recompensas**\n{summary}"
+            ),
+            footer="Você escapou do foco desta vez.",
+            attachment_description=(
+                "Arquivo revelado com a identidade confirmada."
+                if question_kind == "chat_quote"
+                else None
+            ),
         )
-        embed.add_field(name="Recompensas", value=summary, inline=False)
-        embed.set_footer(text="Voce escapou do foco desta vez.")
-        return embed
 
     def build_tempo_unavailable_embed(self, title: str, description: str) -> discord.Embed:
         return discord.Embed(title=title, description=description, color=discord.Color.orange())

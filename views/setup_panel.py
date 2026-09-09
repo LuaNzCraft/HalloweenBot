@@ -189,6 +189,28 @@ class SetupCarouselButton(discord.ui.Button):
         await panel.run_action(interaction, operation, page="carousel")
 
 
+class SetupLeaderboardButton(discord.ui.Button):
+    def __init__(self, *, disabled: bool) -> None:
+        super().__init__(
+            label="Publicar ou atualizar rankings",
+            emoji="🏆",
+            style=discord.ButtonStyle.success,
+            custom_id="setup:leaderboard:publish",
+            disabled=disabled,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        panel = self.view
+        if not isinstance(panel, SetupPanelView):
+            return
+
+        async def operation() -> str:
+            ok, message = await panel.cog.publish_leaderboard(interaction)
+            return f"{'✅' if ok else '❌'} {message}"
+
+        await panel.run_action(interaction, operation, page="channels")
+
+
 class SetupReloadButton(discord.ui.Button):
     def __init__(self) -> None:
         super().__init__(
@@ -364,6 +386,17 @@ class SetupPanelView(discord.ui.LayoutView):
                     )
                 )
             )
+            if setting == "leaderboard":
+                container.add_item(
+                    discord.ui.TextDisplay(
+                        "-# Depois de selecionar o canal, publique o painel ou atualize a mensagem existente."
+                    )
+                )
+                container.add_item(
+                    discord.ui.ActionRow(
+                        SetupLeaderboardButton(disabled=not bool(current_id))
+                    )
+                )
         event_ids = [int(channel_id) for channel_id in self.config.get("event_channel_ids") or []]
         container.add_item(
             discord.ui.TextDisplay(

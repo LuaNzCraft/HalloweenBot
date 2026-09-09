@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 import logging
+import random
 import re
+import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
@@ -81,6 +84,8 @@ class ObserverQuestionCatalog:
             return "movie_image"
         if value == "chat_quote":
             return "chat_quote"
+        if value == "anagram":
+            return "anagram"
         return "text"
 
     def image_path(self, question: dict) -> Path | None:
@@ -154,4 +159,52 @@ class ObserverQuestionCatalog:
         if not has_answers and not str(question.get("answer_pool") or "").strip():
             logger.warning("Pergunta sem respostas ignorada: %s", question_id)
             return None
+
+        if question["kind"] == "anagram":
+            canonical_answer = next(
+                (str(answer).strip() for answer in answers if str(answer).strip()),
+                "",
+            )
+            if not canonical_answer:
+                logger.warning("Anagrama sem resposta canonica ignorado: %s", question_id)
+                return None
+            display_text = str(question.get("display_text") or "").strip()
+            if not display_text:
+                display_text = self._build_anagram_display(question_id, canonical_answer)
+            if (
+                not display_text
+                or len(display_text) > 96
+                or self._anagram_signature(display_text) != self._anagram_signature(canonical_answer)
+            ):
+                logger.warning("Letras invalidas no anagrama %s", question_id)
+                return None
+            question["match_mode"] = "anagram"
+            question["display_text"] = display_text
+            question["display_text_en"] = str(question.get("display_text_en") or display_text).strip()
         return question
+
+    @classmethod
+    def _build_anagram_display(cls, question_id: str, canonical_answer: str) -> str:
+        letters = [char for char in canonical_answer if char.isalnum()]
+        if len(letters) < 2:
+            return ""
+        original = "".join(letters)
+        rng = random.Random(sha256(question_id.encode("utf-8")).digest())
+        for _ in range(8):
+            rng.shuffle(letters)
+            if "".join(letters).casefold() != original.casefold():
+                break
+        else:
+            letters = letters[1:] + letters[:1]
+        return " ".join("".join(letters[index:index + 4]) for index in range(0, len(letters), 4))
+
+    @staticmethod
+    def _anagram_signature(value: str) -> str:
+        normalized = unicodedata.normalize("NFD", str(value).casefold())
+        return "".join(
+            sorted(
+                char
+                for char in normalized
+                if char.isalnum() and unicodedata.category(char) != "Mn"
+            )
+        )

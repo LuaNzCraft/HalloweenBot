@@ -65,6 +65,14 @@ class MissionProgress:
     reward_text: str
 
 
+@dataclass(frozen=True)
+class MissionPanelData:
+    locale: str
+    personal: MissionProgress
+    global_daily: MissionProgress
+    event_mission: MissionProgress | None
+
+
 class MissionService:
     def __init__(
         self,
@@ -90,12 +98,8 @@ class MissionService:
         self._catalog: dict[str, list[MissionDefinition]] | None = None
 
     async def build_embed(self, guild_id: int | None, user_id: int) -> discord.Embed:
-        await self.missions_repo.init_db()
-        locale = await self.i18n.get_user_locale(user_id)
-
-        personal = await self.get_personal_daily(user_id, locale, guild_id)
-        global_daily = await self.get_global_daily(guild_id, user_id, locale)
-        event_mission = await self.get_event_mission(guild_id, user_id, locale)
+        data = await self.get_panel_data(guild_id, user_id)
+        locale = data.locale
 
         embed = discord.Embed(
             title=self.i18n.t(locale, "missions.title"),
@@ -104,21 +108,34 @@ class MissionService:
         )
         embed.add_field(
             name=f"🕯️ {self.i18n.t(locale, 'missions.section.personal')}",
-            value=self._format_mission_block(locale, personal),
+            value=self._format_mission_block(locale, data.personal),
             inline=False,
         )
         embed.add_field(
             name=f"🎃 {self.i18n.t(locale, 'missions.section.global')}",
-            value=self._format_mission_block(locale, global_daily),
+            value=self._format_mission_block(locale, data.global_daily),
             inline=False,
         )
         embed.add_field(
             name=f"👻 {self.i18n.t(locale, 'missions.section.event')}",
-            value=self._format_mission_block(locale, event_mission),
+            value=self._format_mission_block(locale, data.event_mission),
             inline=False,
         )
-        embed.set_footer(text=self.i18n.t(locale, "missions.reset_footer", date=personal.period_key))
+        embed.set_footer(text=self.i18n.t(locale, "missions.reset_footer", date=data.personal.period_key))
         return embed
+
+    async def get_panel_data(self, guild_id: int | None, user_id: int) -> MissionPanelData:
+        await self.missions_repo.init_db()
+        locale = await self.i18n.get_user_locale(user_id)
+        personal = await self.get_personal_daily(user_id, locale, guild_id)
+        global_daily = await self.get_global_daily(guild_id, user_id, locale)
+        event_mission = await self.get_event_mission(guild_id, user_id, locale)
+        return MissionPanelData(
+            locale=locale,
+            personal=personal,
+            global_daily=global_daily,
+            event_mission=event_mission,
+        )
 
     async def evaluate_progress(self, guild_id: int | None, user_id: int) -> list[str]:
         locale = await self.i18n.get_user_locale(user_id)

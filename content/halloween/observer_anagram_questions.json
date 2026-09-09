@@ -1,0 +1,242 @@
+[
+  {
+    "id": "observer_anagram_001",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome completo de um dos assassinos do primeiro Panico.",
+    "question_en": "The signal hides the full name of one of the killers in the first Scream.",
+    "answers": ["billy loomis", "billy"]
+  },
+  {
+    "id": "observer_anagram_002",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome do assassino mascarado de Halloween.",
+    "question_en": "The signal hides the name of Halloween's masked killer.",
+    "answers": ["michael myers", "myers"]
+  },
+  {
+    "id": "observer_anagram_003",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome do assassino mais famoso de Sexta-Feira 13.",
+    "question_en": "The signal hides the name of Friday the 13th's most famous killer.",
+    "answers": ["jason voorhees", "jason"]
+  },
+  {
+    "id": "observer_anagram_004",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome do assassino que invade sonhos.",
+    "question_en": "The signal hides the name of the killer who invades dreams.",
+    "answers": ["freddy krueger", "freddy"]
+  },
+  {
+    "id": "observer_anagram_005",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome de um boneco possuido por um assassino.",
+    "question_en": "The signal hides the name of a doll possessed by a killer.",
+    "answers": ["chucky"]
+  },
+  {
+    "id": "observer_anagram_006",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome da criatura que assume a forma de um palhaco em It.",
+    "question_en": "The signal hides the name of the creature that takes a clown's form in It.",
+    "answers": ["pennywise"]
+  },
+  {
+    "id": "observer_anagram_007",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o apelido do responsavel pelos jogos de Jogos Mortais.",
+    "question_en": "The signal hides the nickname of the person behind Saw's games.",
+    "answers": ["jigsaw", "john kramer"]
+  },
+  {
+    "id": "observer_anagram_008",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome da boneca do universo Invocacao do Mal.",
+    "question_en": "The signal hides the doll's name from The Conjuring universe.",
+    "answers": ["annabelle"]
+  },
+  {
+    "id": "observer_anagram_009",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome da especie da criatura de Alien.",
+    "question_en": "The signal hides the species name of Alien's creature.",
+    "answers": ["xenomorfo", "xenomorph"]
+  },
+  {
+    "id": "observer_anagram_010",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome do assassino de O Massacre da Serra Eletrica.",
+    "question_en": "The signal hides the killer's name from The Texas Chain Saw Massacre.",
+    "answers": ["leatherface"]
+  },
+  {
+    "id": "observer_anagram_011",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome do dono do motel em Psicose.",
+    "question_en": "The signal hides the motel owner's name from Psycho.",
+    "answers": ["norman bates", "norman"]
+  },
+  {
+    "id": "observer_anagram_012",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo da garota de O Chamado.",
+    "question_en": "The signal hides the full name of the girl from The Ring.",
+    "answers": ["samara morgan", "samara"]
+  },
+  {
+    "id": "observer_anagram_013",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o apelido do cenobita mais conhecido de Hellraiser.",
+    "question_en": "The signal hides the nickname of Hellraiser's best-known cenobite.",
+    "answers": ["pinhead"]
+  },
+  {
+    "id": "observer_anagram_014",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome de um espirito invocado diante do espelho.",
+    "question_en": "The signal hides the name of a spirit summoned before a mirror.",
+    "answers": ["candyman"]
+  },
+  {
+    "id": "observer_anagram_015",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome da criatura de um livro infantil assustador.",
+    "question_en": "The signal hides the creature's name from a frightening children's book.",
+    "answers": ["babadook", "the babadook"]
+  },
+  {
+    "id": "observer_anagram_016",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome do demonio que possui Regan.",
+    "question_en": "The signal hides the name of the demon that possesses Regan.",
+    "answers": ["pazuzu"]
+  },
+  {
+    "id": "observer_anagram_017",
+    "kind": "anagram",
+    "difficulty": "easy",
+    "question": "O sinal esconde o nome do vampiro mais famoso da Transilvania.",
+    "question_en": "The signal hides the name of Transylvania's most famous vampire.",
+    "answers": ["dracula", "drácula", "conde dracula", "count dracula"]
+  },
+  {
+    "id": "observer_anagram_018",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo da sobrevivente central de Panico.",
+    "question_en": "The signal hides the full name of Scream's central survivor.",
+    "answers": ["sidney prescott", "sidney"]
+  },
+  {
+    "id": "observer_anagram_019",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo da sobrevivente perseguida em Halloween.",
+    "question_en": "The signal hides the full name of the survivor pursued in Halloween.",
+    "answers": ["laurie strode", "laurie"]
+  },
+  {
+    "id": "observer_anagram_020",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo da menina possuida em O Exorcista.",
+    "question_en": "The signal hides the full name of the possessed girl in The Exorcist.",
+    "answers": ["regan macneil", "regan"]
+  },
+  {
+    "id": "observer_anagram_021",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo do heroi de Evil Dead.",
+    "question_en": "The signal hides the full name of Evil Dead's hero.",
+    "answers": ["ash williams", "ash"]
+  },
+  {
+    "id": "observer_anagram_022",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo da sobrevivente de Alien.",
+    "question_en": "The signal hides the full name of Alien's survivor.",
+    "answers": ["ellen ripley", "ripley"]
+  },
+  {
+    "id": "observer_anagram_023",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o nome do livro proibido ligado a Evil Dead.",
+    "question_en": "The signal hides the name of the forbidden book linked to Evil Dead.",
+    "answers": ["necronomicon", "necronomicon ex mortis"]
+  },
+  {
+    "id": "observer_anagram_024",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome do hotel isolado de O Iluminado.",
+    "question_en": "The signal hides the name of the isolated hotel from The Shining.",
+    "answers": ["overlook hotel", "overlook", "the overlook hotel"]
+  },
+  {
+    "id": "observer_anagram_025",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome da cidade onde acontecem os primeiros ataques de Panico.",
+    "question_en": "The signal hides the town where Scream's first attacks happen.",
+    "answers": ["woodsboro"]
+  },
+  {
+    "id": "observer_anagram_026",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o nome da nave comercial de Alien.",
+    "question_en": "The signal hides the name of the commercial ship from Alien.",
+    "answers": ["nostromo"]
+  },
+  {
+    "id": "observer_anagram_027",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome da ilha ameacada pelo tubarao de Spielberg.",
+    "question_en": "The signal hides the name of the island threatened by Spielberg's shark.",
+    "answers": ["amity island", "amity"]
+  },
+  {
+    "id": "observer_anagram_028",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o nome da caixa que abre caminho para os cenobitas.",
+    "question_en": "The signal hides the name of the box that opens the way to the cenobites.",
+    "answers": ["lament configuration"]
+  },
+  {
+    "id": "observer_anagram_029",
+    "kind": "anagram",
+    "difficulty": "medium",
+    "question": "O sinal esconde o nome completo do palhaco de Terrifier.",
+    "question_en": "The signal hides the full name of the clown from Terrifier.",
+    "answers": ["art the clown", "art"]
+  },
+  {
+    "id": "observer_anagram_030",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o nome completo da assassina do primeiro Sexta-Feira 13.",
+    "question_en": "The signal hides the full name of the killer from the first Friday the 13th.",
+    "answers": ["pamela voorhees", "pamela"]
+  }
+]

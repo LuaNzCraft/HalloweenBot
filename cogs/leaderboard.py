@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from repositories.admin_repo import AdminRepo
@@ -118,50 +117,39 @@ class LeaderboardCog(commands.Cog):
             except (discord.NotFound, discord.HTTPException, discord.Forbidden):
                 continue
 
-    @app_commands.command(name="leaderboard", description="Admin: publica ou atualiza o painel de leaderboards.")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
-    async def leaderboard(self, interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Use esse comando dentro de um servidor.", ephemeral=True)
-            return
-
-        await interaction.response.defer(ephemeral=True)
-
+    async def publish_or_update_panel(
+        self,
+        guild: discord.Guild,
+        *,
+        actor_id: int,
+    ) -> tuple[bool, str]:
         try:
-            active_page = await self.leaderboard_service.get_panel_page(interaction.guild.id) or DEFAULT_PAGE
+            active_page = await self.leaderboard_service.get_panel_page(guild.id) or DEFAULT_PAGE
         except Exception:
             active_page = DEFAULT_PAGE
 
         try:
             await self.leaderboard_service.publish_or_update_panel(
-                interaction.guild,
+                guild,
                 LeaderboardPanelView(self.leaderboard_service, active=active_page),
             )
         except ValueError as exc:
             if str(exc) == "leaderboard_channel_not_configured":
-                await interaction.followup.send(
-                    "Abra `/setup` e selecione o canal na pagina **Canais**.",
-                    ephemeral=True,
-                )
-                return
-            await interaction.followup.send("Nao consegui atualizar a leaderboard configurada.", ephemeral=True)
-            return
+                return False, "Selecione primeiro o canal de leaderboards nesta pagina."
+            return False, "Nao consegui atualizar o painel de rankings configurado."
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            await interaction.followup.send(
-                "Nao consegui acessar ou publicar no canal de leaderboard configurado. "
-                "Confira o canal na pagina **Resumo** de `/setup` e verifique minhas permissoes.",
-                ephemeral=True,
+            return (
+                False,
+                "Nao consegui publicar no canal configurado. Verifique minhas permissoes.",
             )
-            return
 
         await self.audit_service.log(
-            guild_id=interaction.guild.id,
-            actor_id=interaction.user.id,
+            guild_id=guild.id,
+            actor_id=actor_id,
             action="leaderboard.update",
             payload={"type": "painel"},
         )
-        await interaction.followup.send("Painel de leaderboards atualizado.", ephemeral=True)
+        return True, "Painel de rankings publicado ou atualizado."
 
 
 async def setup(bot: commands.Bot) -> None:

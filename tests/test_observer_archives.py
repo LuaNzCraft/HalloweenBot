@@ -214,6 +214,7 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             author=SimpleNamespace(id=40, mention="<@40>"),
             content="Pessoa Teste",
         )
+        winner_panel = SimpleNamespace()
         cog = SimpleNamespace(
             _resolving_observer_guilds=set(),
             _observer_timeout_tasks={},
@@ -222,7 +223,7 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             _prepare_observer_answer=lambda value, _mode: value.strip().casefold(),
             _load_config=lambda: {"observer": {}},
             _find_observer_question_for_state=AsyncMock(return_value=self.question),
-            _build_observer_winner_embed=lambda *_args: discord.Embed(title="Vencedor"),
+            _build_observer_winner_panel=MagicMock(return_value=winner_panel),
             observer_catalog=ObserverQuestionCatalog(Path.cwd()),
             _resolve_observer_timeout_answer=lambda _question: (
                 "Identidade confirmada",
@@ -240,8 +241,11 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
         sent = cog._send_observer_payload.await_args
         self.assertEqual(sent.kwargs["attachment_path"], self.revealed_path)
         self.assertEqual(sent.kwargs["attachment_filename"], "revealed.png")
-        self.assertEqual(sent.kwargs["embed"].image.url, "attachment://revealed.png")
-        self.assertEqual(sent.kwargs["embed"].fields[0].value, "Pessoa Teste")
+        self.assertIs(sent.kwargs["view"], winner_panel)
+        self.assertEqual(
+            cog._build_observer_winner_panel.call_args.kwargs["answer_value"],
+            "Pessoa Teste",
+        )
 
     async def test_timeout_after_restart_publishes_the_revealed_card(self) -> None:
         expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
@@ -264,6 +268,7 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
         channel = MagicMock(spec=discord.TextChannel)
         channel.id = 20
         guild = SimpleNamespace(id=10, get_channel=MagicMock(return_value=channel))
+        timeout_panel = SimpleNamespace()
         cog = SimpleNamespace(
             _resolving_observer_guilds=set(),
             _observer_timeout_tasks={},
@@ -277,7 +282,7 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             ),
             _resolve_observer_revealed_image_path=lambda _question: self.revealed_path,
             _resolve_observer_revealed_attachment_filename=lambda _question: "revealed.png",
-            _build_observer_timeout_embed=lambda **_kwargs: discord.Embed(title="Tempo esgotado"),
+            _build_observer_timeout_panel=MagicMock(return_value=timeout_panel),
             _send_observer_payload=AsyncMock(),
         )
 
@@ -286,7 +291,11 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
         sent = cog._send_observer_payload.await_args
         self.assertEqual(sent.kwargs["attachment_path"], self.revealed_path)
         self.assertEqual(sent.kwargs["attachment_filename"], "revealed.png")
-        self.assertEqual(sent.kwargs["embed"].image.url, "attachment://revealed.png")
+        self.assertIs(sent.kwargs["view"], timeout_panel)
+        self.assertEqual(
+            cog._build_observer_timeout_panel.call_args.kwargs["answer_value"],
+            "Pessoa Teste",
+        )
         self.assertFalse(repo.set_observer_state.await_args.kwargs["active"])
 
 

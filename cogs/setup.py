@@ -104,6 +104,20 @@ class SetupCog(commands.Cog):
             payload={"channel_ids": channel_ids},
         )
 
+    async def publish_leaderboard(
+        self,
+        interaction: discord.Interaction,
+    ) -> tuple[bool, str]:
+        guild = interaction.guild
+        if guild is None:
+            return False, "Use o setup dentro de um servidor."
+
+        leaderboard_cog = self.bot.get_cog("LeaderboardCog")
+        publisher = getattr(leaderboard_cog, "publish_or_update_panel", None)
+        if not callable(publisher):
+            return False, "O modulo de rankings nao esta disponivel."
+        return await publisher(guild, actor_id=interaction.user.id)
+
     async def update_setup_role(
         self,
         guild_id: int | None,

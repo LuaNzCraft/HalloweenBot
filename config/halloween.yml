@@ -737,9 +737,11 @@ public_events:
     question_source: content/halloween/observer_questions.json
     question_sources:
     - content/halloween/observer_questions.json
+    - content/halloween/observer_anagram_questions.json
     - content/halloween/observer_movie_questions.json
     round_type_weights:
-      text: 60
+      text: 40
+      anagram: 20
       movie_image: 25
       chat_quote: 15
     answer_timeout_seconds: 90

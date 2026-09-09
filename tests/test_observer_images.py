@@ -17,6 +17,7 @@ from services.observer_question_catalog import ObserverQuestionCatalog
 from services.julgamento_texts import JulgamentoTextsService
 from services.public_event_runtime import PublicEventRuntimeService
 from services.public_event_texts import PublicEventTextsService
+from views.public_event_views import ObserverPanelView
 
 
 class ObserverSchedulerTests(unittest.TestCase):
@@ -174,6 +175,7 @@ class ObserverRuntimePersistenceTests(unittest.IsolatedAsyncioTestCase):
             get_observer_state=AsyncMock(return_value={"active": False}),
             set_observer_state=AsyncMock(),
         )
+        question_panel = SimpleNamespace(message=None)
         cog = SimpleNamespace(
             _get_event_channels=AsyncMock(return_value=[SimpleNamespace(id=20)]),
             public_events_repo=repo,
@@ -187,7 +189,7 @@ class ObserverRuntimePersistenceTests(unittest.IsolatedAsyncioTestCase):
             _resolve_observer_display_text=MagicMock(return_value=None),
             _resolve_observer_image_path=MagicMock(return_value=image_path),
             _resolve_observer_attachment_filename=MagicMock(return_value="movie_1.webp"),
-            _build_observer_question_embed=MagicMock(return_value=discord.Embed()),
+            _build_observer_question_panel=MagicMock(return_value=question_panel),
             _send_observer_payload=AsyncMock(return_value=SimpleNamespace(id=30)),
             _observer_timeout_tasks={},
             bot=SimpleNamespace(loop=ClosingLoop()),
@@ -202,23 +204,33 @@ class ObserverRuntimePersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((ok, reason), (True, "ok"))
         self.assertEqual(cog._send_observer_payload.await_args.kwargs["attachment_path"], image_path)
         self.assertEqual(cog._send_observer_payload.await_args.kwargs["attachment_filename"], "movie_1.webp")
+        self.assertIs(cog._send_observer_payload.await_args.kwargs["view"], question_panel)
+        self.assertEqual(question_panel.message.id, 30)
         self.assertEqual(repo.set_observer_state.await_args.kwargs["question_id"], "movie_1")
 
 
-class ObserverImageEmbedTests(unittest.TestCase):
-    def test_question_embed_references_the_attached_image(self) -> None:
-        embed = PublicEventTextsService().build_observer_question_embed(
-            0x780C0C,
+class ObserverImagePanelTests(unittest.TestCase):
+    def test_question_panel_references_the_attached_image(self) -> None:
+        content = PublicEventTextsService().build_observer_question_panel_content(
             question_text="Que filme aparece nesta imagem?",
             deadline_at=discord.utils.utcnow(),
             match_mode="normalized",
             display_text=None,
             difficulty="medium",
+            question_kind="movie_image",
+            has_attachment=True,
+        )
+        panel = ObserverPanelView(
+            content,
+            color=discord.Color.from_rgb(120, 12, 12),
             attachment_filename="movie_001.webp",
         )
+        self.addCleanup(panel.stop)
+        components = str(panel.to_components())
 
-        self.assertEqual(embed.title, "📹 O Observador esta gravando")
-        self.assertEqual(embed.image.url, "attachment://movie_001.webp")
+        self.assertTrue(panel.has_components_v2())
+        self.assertIn("IMAGEM INTERCEPTADA", components)
+        self.assertIn("attachment://movie_001.webp", components)
 
 
 class CarrosselImageQuestionTests(unittest.IsolatedAsyncioTestCase):

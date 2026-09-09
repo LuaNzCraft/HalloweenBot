@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 import discord
 
+from services.public_event_texts import ObserverPanelContent
+
 
 if TYPE_CHECKING:
     from cogs.public_events import PublicEventsCog
@@ -17,34 +19,114 @@ CUSTOM_EMOJI_RE = re.compile(r"^<(?P<animated>a)?:(?P<name>[A-Za-z0-9_]+):(?P<id
 logger = logging.getLogger(__name__)
 
 
-class ObserverTranslateView(discord.ui.View):
-    def __init__(self, cog: "PublicEventsCog", question: dict, deadline_at: datetime) -> None:
-        timeout_seconds = max(1, int((deadline_at - discord.utils.utcnow()).total_seconds()))
-        super().__init__(timeout=timeout_seconds)
-        self.cog = cog
-        self.question = question
-        self.deadline_at = deadline_at
-        self._user_cooldowns: dict[int, datetime] = {}
+class ObserverTranslateButton(discord.ui.Button):
+    def __init__(self) -> None:
+        super().__init__(
+            label="Translate",
+            emoji="🌐",
+            style=discord.ButtonStyle.secondary,
+            custom_id="observer:translate",
+        )
 
-    @discord.ui.button(label="Translate", style=discord.ButtonStyle.secondary)
-    async def translate_en(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+    async def callback(self, interaction: discord.Interaction) -> None:
+        panel = self.view
+        if not isinstance(panel, ObserverPanelView) or panel.cog is None or panel.question is None:
+            return
         now = discord.utils.utcnow()
-        available_at = self._user_cooldowns.get(interaction.user.id)
+        available_at = panel.user_cooldowns.get(interaction.user.id)
         if available_at is not None and available_at > now:
             await interaction.response.send_message(
                 f"Espere {discord.utils.format_dt(available_at, style='R')} para usar Translate de novo.",
                 ephemeral=True,
             )
             return
-        embed = self.cog.build_observer_translation_embed(self.question, self.deadline_at)
-        if embed is None:
+        translated_panel = panel.cog.build_observer_translation_panel(
+            panel.question,
+            panel.deadline_at,
+        )
+        if translated_panel is None:
             await interaction.response.send_message(
                 "This question does not have an English version yet.",
                 ephemeral=True,
             )
             return
-        self._user_cooldowns[interaction.user.id] = now + timedelta(seconds=30)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        panel.user_cooldowns[interaction.user.id] = now + timedelta(seconds=30)
+        await interaction.response.send_message(
+            view=translated_panel,
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+
+class ObserverPanelView(discord.ui.LayoutView):
+    def __init__(
+        self,
+        content: ObserverPanelContent,
+        *,
+        color: discord.Color,
+        attachment_filename: str | None = None,
+        cog: PublicEventsCog | None = None,
+        question: dict | None = None,
+        deadline_at: datetime | None = None,
+        timeout: float | None = None,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        self.content = content
+        self.cog = cog
+        self.question = question
+        self.deadline_at = deadline_at
+        self.attachment_filename = attachment_filename
+        self.user_cooldowns: dict[int, datetime] = {}
+        self.message: discord.Message | discord.WebhookMessage | None = None
+        self.add_item(self._build_container(color))
+
+    def _build_container(self, color: discord.Color) -> discord.ui.Container:
+        container = discord.ui.Container(accent_color=color)
+        container.add_item(
+            discord.ui.TextDisplay(
+                f"# {self.content.title}\n{self.content.description}"
+            )
+        )
+        if self.attachment_filename:
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+            container.add_item(
+                discord.ui.MediaGallery(
+                    discord.MediaGalleryItem(
+                        f"attachment://{self.attachment_filename}",
+                        description=self.content.attachment_description,
+                    )
+                )
+            )
+        if self.content.metadata or self.content.details:
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        if self.content.metadata:
+            container.add_item(discord.ui.TextDisplay(self.content.metadata))
+        if self.content.details:
+            container.add_item(discord.ui.TextDisplay(self.content.details))
+        if self.content.footer:
+            container.add_item(discord.ui.Separator())
+            container.add_item(discord.ui.TextDisplay(f"-# {self.content.footer}"))
+        if self.cog is not None and self.question is not None and self.deadline_at is not None:
+            container.add_item(discord.ui.ActionRow(ObserverTranslateButton()))
+        return container
+
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        changed = False
+        for item in self.walk_children():
+            if hasattr(item, "disabled") and not item.disabled:
+                item.disabled = True
+                changed = True
+        if not changed:
+            return
+        try:
+            await self.message.edit(
+                view=self,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            pass
 
 
 class PublicEventTranslateView(discord.ui.View):

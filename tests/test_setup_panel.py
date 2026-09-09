@@ -4,8 +4,9 @@ from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
+from cogs.leaderboard import LeaderboardCog
 from cogs.setup import SetupCog
 from repositories.admin_repo import AdminRepo
 from views.setup_panel import ROLE_SETTINGS, SetupPanelView
@@ -18,6 +19,25 @@ class SetupCommandSurfaceTests(unittest.TestCase):
         qualified_names = [command.qualified_name for command in cog.walk_app_commands()]
 
         self.assertEqual(qualified_names, ["setup"])
+
+    def test_leaderboard_is_no_longer_a_slash_command(self) -> None:
+        self.assertEqual(list(LeaderboardCog.__cog_app_commands__), [])
+
+
+class SetupLeaderboardActionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_setup_delegates_publication_to_the_leaderboard_cog(self) -> None:
+        publisher = AsyncMock(return_value=(True, "Painel atualizado."))
+        leaderboard_cog = SimpleNamespace(publish_or_update_panel=publisher)
+        bot = SimpleNamespace(get_cog=MagicMock(return_value=leaderboard_cog))
+        cog = SetupCog(bot)
+        guild = SimpleNamespace(id=10)
+        interaction = SimpleNamespace(guild=guild, user=SimpleNamespace(id=50))
+
+        result = await cog.publish_leaderboard(interaction)
+
+        self.assertEqual(result, (True, "Painel atualizado."))
+        bot.get_cog.assert_called_once_with("LeaderboardCog")
+        publisher.assert_awaited_once_with(guild, actor_id=50)
 
 
 class SetupRepositoryTests(unittest.IsolatedAsyncioTestCase):
@@ -88,6 +108,7 @@ class SetupPanelTests(unittest.IsolatedAsyncioTestCase):
                 "setup:channel:logs",
                 "setup:channel:julgamento",
                 "setup:channel:eventos",
+                "setup:leaderboard:publish",
             }.issubset(self._custom_ids())
         )
 
@@ -100,6 +121,24 @@ class SetupPanelTests(unittest.IsolatedAsyncioTestCase):
 
         await self.panel.refresh(page="system")
         self.assertIn("setup:system:reload", self._custom_ids())
+
+    async def test_leaderboard_publication_requires_a_configured_channel(self) -> None:
+        await self.panel.refresh(page="channels")
+        button = next(
+            item
+            for item in self.panel.walk_children()
+            if getattr(item, "custom_id", None) == "setup:leaderboard:publish"
+        )
+        self.assertTrue(button.disabled)
+
+        await self.repo.set_channel(self.guild.id, "leaderboard", 20)
+        await self.panel.refresh(page="channels")
+        button = next(
+            item
+            for item in self.panel.walk_children()
+            if getattr(item, "custom_id", None) == "setup:leaderboard:publish"
+        )
+        self.assertFalse(button.disabled)
 
     async def test_only_the_moderator_who_opened_the_panel_can_use_it(self) -> None:
         rejected = SimpleNamespace(
