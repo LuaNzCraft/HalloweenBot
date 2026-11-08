@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -35,6 +36,7 @@ def _resolve_profile_timezone() -> timezone | ZoneInfo:
 
 
 PROFILE_REQUESTS_TIMEZONE = _resolve_profile_timezone()
+LOGGER = logging.getLogger(__name__)
 
 
 class PublicProfileRequestButton(discord.ui.Button):
@@ -102,6 +104,9 @@ class PublicProfileView(discord.ui.LayoutView):
             )
             return
         await interaction.response.defer()
+        if self.cog._is_bot_target(self.target_id):
+            await self.cog.handle_bot_easter_egg(interaction, self, button)
+            return
         guild_id = interaction.guild.id
         now_dt = datetime.now(PROFILE_REQUESTS_TIMEZONE)
         now_iso = now_dt.isoformat()
@@ -581,7 +586,10 @@ class ProfileCog(commands.Cog):
         data = self._build_profile_data(member, profile)
         can_request = False
         if interaction.guild is not None:
-            can_request = await self._is_recently_active_in_event(interaction.guild.id, member.id)
+            if self._is_bot_target(member.id):
+                can_request = self._bot_easter_egg_role(interaction.user) is not None
+            else:
+                can_request = await self._is_recently_active_in_event(interaction.guild.id, member.id)
         view = PublicProfileView(
             self,
             interaction.guild.id if interaction.guild else None,
@@ -719,6 +727,74 @@ class ProfileCog(commands.Cog):
         window_minutes = int(self.profile_requests_config.get("active_window_minutes", 30))
         now = datetime.now(last_active.tzinfo or PROFILE_REQUESTS_TIMEZONE)
         return last_active >= now - timedelta(minutes=window_minutes)
+
+    # ---- Easter egg: pedir doce ao proprio bot ----
+
+    def _is_bot_target(self, user_id: int) -> bool:
+        return self.bot.user is not None and int(user_id) == self.bot.user.id
+
+    def _bot_easter_egg_config(self) -> dict | None:
+        cfg = self.profile_requests_config.get("easter_egg")
+        if not isinstance(cfg, dict) or not cfg.get("enabled", False):
+            return None
+        try:
+            role_id = int(cfg.get("role_id") or 0)
+        except (TypeError, ValueError):
+            return None
+        if role_id <= 0:
+            return None
+        return {**cfg, "role_id": role_id}
+
+    def _bot_easter_egg_role(self, viewer: discord.abc.User | discord.Member | None) -> discord.Role | None:
+        """Devolve o cargo se a pessoa ainda pode ganhar; None se nao (desligado, sem cargo, ja tem)."""
+        cfg = self._bot_easter_egg_config()
+        if cfg is None or not isinstance(viewer, discord.Member):
+            return None
+        role = viewer.guild.get_role(cfg["role_id"])
+        if role is None or role in viewer.roles:
+            return None
+        return role
+
+    async def handle_bot_easter_egg(
+        self,
+        interaction: discord.Interaction,
+        view: "PublicProfileView",
+        button: discord.ui.Button,
+    ) -> None:
+        # Resposta neutra: e a mesma que a pessoa ja recebia ao pedir doce a alguem inativo.
+        generic = self.i18n.t(view.locale, "profile.trick_or_treat_target_inactive")
+        role = self._bot_easter_egg_role(interaction.user)
+        if role is None:
+            await interaction.followup.send(generic, ephemeral=True)
+            return
+        try:
+            await interaction.user.add_roles(role, reason="profile")
+        except discord.HTTPException:
+            LOGGER.warning(
+                "easter egg: nao consegui dar o cargo %s para o usuario %s",
+                role.id,
+                interaction.user.id,
+                exc_info=True,
+            )
+            await interaction.followup.send(generic, ephemeral=True)
+            return
+        button.disabled = True
+        try:
+            await interaction.edit_original_response(
+                view=view,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            pass
+        cfg = self._bot_easter_egg_config() or {}
+        message = str(cfg.get("message") or "").strip()
+        if str(view.locale).lower().startswith("en"):
+            message = str(cfg.get("message_en") or "").strip() or message
+        await interaction.followup.send(
+            message or "\U0001F383",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     def _format_generosity_reward_line(self, locale: str, item_id: str, quantity: int) -> str:
         item_name = self.i18n.maybe_t(locale, f"item.{item_id}.name") or item_id

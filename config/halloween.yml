@@ -10,7 +10,7 @@ config_version: 1
 guild_defaults:
   leaderboard_channel_id: null
   log_channel_id: null
-  event_channel_ids: []
+  event_channel_ids: [1221978072782344232, 1348737823586517033]
   julgamento_channel_id: null
   julgamento_thread_id: null
   julgamento_base_message_id: null
@@ -59,6 +59,23 @@ effects:
   - Mini Monstro
   - Fantasma do RH
   - Criatura de Quintal
+  - Abracadaver
+  - Feioso
+  - Desdentado
+  - Vampiro com Anemia
+  - Doce Estragado
+  - Vampiro Banguela
+  - Gollum Cearense
+  - Escritor com Tendinite
+  - Slime LV1
+  - I'M MONOCELHA
+  - Amante de Modern Love
+  - Gacha Man
+  - Asthmatic Dragon
+  - Bad Influencer
+  - Bald Mammoth
+  - Beerwolf
+  - Pimpolho
 # Regras do pedido publico de Doce ou Travessura.
 profile_requests:
   candy_amount: 10
@@ -67,16 +84,24 @@ profile_requests:
   request_timeout_seconds: 1800
   active_window_minutes: 30
   ignore_cooldown_seconds: 180
+  easter_egg:
+    enabled: true
+    role_id: 1558919572290281543
+    message: "Então você foi travesso e tentou travar o bot? Pena que o Coelho já me contou como consertar isso. Mas, pela sua tentativa, vou te dar esse cargo Travesso."
+    message_en: "So you were naughty and tried to crash the bot? Too bad the Rabbit already told me how to fix that. But, for your attempt, I’ll give you this role Travesso."
 # Trem Fantasma: bonus coletivo disparado pelo movimento do chat.
 chat_bonus:
   enabled: true
-  threshold_messages: 100
+  threshold_messages: 70
   window_minutes: 10
   min_message_length: 3
   button_timeout_seconds: 30
+  english_channel_ids:
+  - 1348737823586517033
   options:
   - id: candies
     label: Doces
+    label_en: Sweets
     emoji: <:sweetcoins:1496365065773781033>
     rewards:
     - grant_type: currency
@@ -84,6 +109,7 @@ chat_bonus:
       amount: 30
   - id: tricks
     label: Travessuras
+    label_en: Tricks
     emoji: <:trickcoins:1496364971398008932>
     rewards:
     - grant_type: currency
@@ -97,15 +123,19 @@ chat_candy:
   - 1496905441488277574
   - 1496905835237085245
   - 1496906705219617030
-  spawn_chance_percent: 60
+  spawn_chance_percent:  13
   spawn_cooldown_seconds: 30
   capture_seconds: 15
   min_message_length: 3
   min_options: 3
   max_options: 4
-  reward_candies: 1
+  reward_candies:  4
   max_spawns_per_day: 150
   pause_during_public_events: true
+  delete_winner_after_seconds: 5    # 0 = não apaga
+  delete_timeout_after_seconds: 5    # a mensagem de "ninguém pegou"; 0 = mantém
+  english_channel_ids:
+  - 1348737823586517033
 # Tabuleiro, casas, imagens e recompensas.
 board:
   total_tiles: 16
@@ -672,7 +702,7 @@ shop:
     emoji: 🕸
     description: Versao premium por Moedas Travessas. Entrega o tier mais raro do /cestas por um preco bem
       alto.
-    price: 400
+    price: 350
     currency: trick_coins
     grant_type: item
     grant_id: cesta_doce_amaldicoada
@@ -725,10 +755,9 @@ public_events:
     enabled: true
     interval_minutes: 60
     julgamento_daily_times:
-    - '13:00'
-    - '19:00'
-    - '21:00'
-    announce_minutes_before: 1
+    - '12:10'
+    - '19:10'
+    announce_minutes_before: 5
     pause_after_hour: 0
     resume_hour: 8
   # Perguntas, proporcao de imagens e recompensas do Observador.
@@ -740,11 +769,14 @@ public_events:
     - content/halloween/observer_anagram_questions.json
     - content/halloween/observer_movie_questions.json
     round_type_weights:
-      text: 40
-      anagram: 20
-      movie_image: 25
-      chat_quote: 15
-    answer_timeout_seconds: 90
+      text: 10
+      anagram: 10
+      movie_image: 50
+      chat_quote: 30
+    cleanup:
+      delete_announcement_after_end: true
+      delete_result_after_seconds: 0
+    answer_timeout_seconds: 120
     webhook_name: Observador
     webhook_avatar_path: Assets/Observador.png
     archives:
@@ -755,19 +787,19 @@ public_events:
     difficulty_defaults:
       easy:
         reward_count: 2
-        allow_baskets: false
+        allow_baskets: true
       medium:
         reward_count: 3
         allow_baskets: true
       hard:
-        reward_count: 3
+        reward_count: 4
         allow_baskets: true
     reward_pool:
       candies:
         grant_type: currency
         grant_id: candies
         min_amount: 30
-        max_amount: 70
+        max_amount: 90
       xp_bank:
         grant_type: currency
         grant_id: xp_bank
@@ -782,7 +814,7 @@ public_events:
         grant_type: currency
         grant_id: dice_count
         min_amount: 1
-        max_amount: 2
+        max_amount: 3
       baskets:
         grant_type: item
         grant_id: cesta_abobora
@@ -804,8 +836,8 @@ public_events:
     - 1496905835237085245
     - 1496906705219617030
     duration_minutes: 15
-    spawn_chance_percent: 8
-    capture_seconds: 7
+    spawn_chance_percent: 30
+    capture_seconds: 13
     min_message_length: 3
     max_spawns_per_event: 150
     max_captures_per_user: 400
@@ -814,24 +846,24 @@ public_events:
       trick_coins: 2
     item_rewards:
     - item_id: cesta_abobora
-      chance_percent_per_capture: 2
+      chance_percent_per_capture: 5
     - item_id: interferencia
-      chance_percent_per_capture: 1
+      chance_percent_per_capture: 5
 # Carrossel: inscricao, perguntas, tempos, assets e premio final.
 carousel:
   enabled: false
   selection_weight: 1
-  signup_minutes: 3
+  signup_minutes: 10
   signup_seconds: null
   spectator_minutes_after_end: 3
-  answer_timeout_seconds: 25
+  answer_timeout_seconds: 30
   question_source: content/halloween/observer_questions.json
   question_sources:
   - content/halloween/observer_questions.json
   - content/halloween/observer_movie_questions.json
   round_type_weights:
-    text: 65
-    movie_image: 35
+    text: 50
+    movie_image: 50
   announcement_title: 🎠 O Carrossel vai comecar
   announcement_description: O Carrossel esta sendo preparado. Em **1 minuto** as inscricoes vao abrir.
   signup_title: 🎠 Carrossel
@@ -845,9 +877,11 @@ carousel:
   winner_rewards:
     ticket_carrossel: 1
     candies: 320
-    trick_coins: 120
-    dice_count: 4
-    cesta_abobora: 3
+    trick_coins: 320
+    dice_count: 6
+    cesta_abobora: 6
+    cesta_doce_epica: 2
+    cesta_doce_amaldicoada: 1
     xp_bank: 1800
-  webhook_name: Silas Dyrkon
+  webhook_name: Silas Modern
   webhook_avatar_path: Assets/boneco.png

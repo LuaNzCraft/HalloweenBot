@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -25,7 +26,16 @@ class PublicEventTextsService:
         reward_candies: int,
         expires_at: datetime,
         option_count: int,
+        locale: str = "pt-BR",
     ) -> discord.Embed:
+        if str(locale or "").lower().startswith("en"):
+            return self._build_chat_candy_spawn_embed_en(
+                color,
+                target_emoji=target_emoji,
+                reward_candies=reward_candies,
+                expires_at=expires_at,
+                option_count=option_count,
+            )
         reward_label = "doce" if reward_candies == 1 else "doces"
         embed = discord.Embed(
             title="🍬 Caça aos Doces!",
@@ -48,17 +58,31 @@ class PublicEventTextsService:
         *,
         winner_mention: str,
         reward_summary: str,
+        locale: str = "pt-BR",
     ) -> discord.Embed:
+        if str(locale or "").lower().startswith("en"):
+            return self._build_chat_candy_winner_embed_en(
+                color,
+                winner_mention=winner_mention,
+                reward_summary=reward_summary,
+            )
         embed = discord.Embed(
             title="🍬 Doce capturado!",
             description=f"{winner_mention} encontrou o doce correto antes de todo mundo.",
             color=color,
         )
         embed.add_field(name="Premio", value=reward_summary, inline=False)
-        embed.set_footer(text="Continue conversando: outro doce pode aparecer a qualquer momento.")
         return embed
 
-    def build_chat_candy_timeout_embed(self, color: discord.Color) -> discord.Embed:
+    def build_chat_candy_timeout_embed(self, color: discord.Color, locale: str = "pt-BR") -> discord.Embed:
+        if str(locale or "").lower().startswith("en"):
+            embed = discord.Embed(
+                title="The candy vanished...",
+                description="Nobody found the right candy in time.",
+                color=color,
+            )
+            embed.set_footer(text="Keep an eye on the chat for the next drop.")
+            return embed
         embed = discord.Embed(
             title="O doce desapareceu...",
             description="Ninguem encontrou o doce correto a tempo.",
@@ -67,12 +91,65 @@ class PublicEventTextsService:
         embed.set_footer(text="Continue atento ao chat para a proxima aparicao.")
         return embed
 
-    def build_chat_candy_cancelled_embed(self, color: discord.Color) -> discord.Embed:
+    def build_chat_candy_cancelled_embed(self, color: discord.Color, locale: str = "pt-BR") -> discord.Embed:
+        if str(locale or "").lower().startswith("en"):
+            return discord.Embed(
+                title="The candy was taken back",
+                description="This drop ended along with the event.",
+                color=color,
+            )
         return discord.Embed(
             title="O doce foi recolhido",
             description="Esta aparicao foi encerrada junto com o evento.",
             color=color,
         )
+
+    def _build_chat_candy_spawn_embed_en(
+        self,
+        color: discord.Color,
+        *,
+        target_emoji: str,
+        reward_candies: int,
+        expires_at: datetime,
+        option_count: int,
+    ) -> discord.Embed:
+        reward_label = "Sweet Coin" if reward_candies == 1 else "Sweet Coins"
+        embed = discord.Embed(
+            title="🍬 Candy Hunt!",
+            description=(
+                "Find the indicated candy among the reactions below.\n\n"
+                f"# {target_emoji}\n\n"
+                "Choose carefully: you get **one attempt** per drop."
+            ),
+            color=color,
+        )
+        embed.add_field(name="Options", value=str(option_count), inline=True)
+        embed.add_field(name="Reward", value=f"{reward_candies} {reward_label}", inline=True)
+        embed.add_field(name="Vanishes", value=discord.utils.format_dt(expires_at, style="R"), inline=True)
+        embed.set_footer(text="The first player to pick the right candy wins.")
+        return embed
+
+    def _build_chat_candy_winner_embed_en(
+        self,
+        color: discord.Color,
+        *,
+        winner_mention: str,
+        reward_summary: str,
+    ) -> discord.Embed:
+        summary = str(reward_summary or "")
+        match = re.match(r"^\s*(\d+)\s+doces?\s*$", summary, re.IGNORECASE)
+        if match:
+            amount = int(match.group(1))
+            summary = f"{amount} Sweet Coin" if amount == 1 else f"{amount} Sweet Coins"
+        elif "pendente" in summary.lower():
+            summary = "Reward pending verification"
+        embed = discord.Embed(
+            title="🍬 Candy caught!",
+            description=f"{winner_mention} found the right candy before everyone else.",
+            color=color,
+        )
+        embed.add_field(name="Reward", value=summary, inline=False)
+        return embed
 
     def build_spider_announcement_embed(self, color: discord.Color, starts_at: datetime) -> discord.Embed:
         embed = discord.Embed(
@@ -162,7 +239,16 @@ class PublicEventTextsService:
         threshold: int,
         timeout_seconds: int,
         options: list[dict],
+        locale: str = "pt-BR",
     ) -> discord.Embed:
+        if str(locale or "").lower().startswith("en"):
+            return self._build_chat_bonus_embed_en(
+                color,
+                message_count=message_count,
+                threshold=threshold,
+                timeout_seconds=timeout_seconds,
+                options=options,
+            )
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=timeout_seconds)
         embed = discord.Embed(
             title="Trem Fantasma em movimento",
@@ -201,6 +287,55 @@ class PublicEventTextsService:
                 lines.append(f"{prefix}**{label}**: {summary}")
             if lines:
                 embed.add_field(name="Vagoes", value="\n".join(lines), inline=False)
+        return embed
+
+    def _build_chat_bonus_embed_en(
+        self,
+        color: discord.Color,
+        *,
+        message_count: int,
+        threshold: int,
+        timeout_seconds: int,
+        options: list[dict],
+    ) -> discord.Embed:
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=timeout_seconds)
+        embed = discord.Embed(
+            title="Ghost Train on the move",
+            description=(
+                f"The event chat hit **{message_count} messages** and pulled the **Ghost Train**.\n\n"
+                "Pick a car below and board once before it leaves."
+            ),
+            color=color,
+        )
+        embed.add_field(name="Goal", value=f"{threshold} messages", inline=True)
+        embed.add_field(name="Departs", value=discord.utils.format_dt(expires_at, style="R"), inline=True)
+        if options:
+            lines: list[str] = []
+            for option in options:
+                emoji = str(option.get("emoji") or "").strip()
+                label = str(option.get("label") or "Option")
+                reward_parts: list[str] = []
+                for reward in option.get("rewards") or []:
+                    if not isinstance(reward, dict):
+                        continue
+                    grant_type = str(reward.get("grant_type") or "").strip().lower()
+                    grant_id = str(reward.get("grant_id") or "").strip()
+                    amount = int(reward.get("amount", 0) or 0)
+                    if grant_type != "currency" or amount <= 0:
+                        continue
+                    if grant_id == "candies":
+                        reward_parts.append(f"{amount} Sweet Coins")
+                    elif grant_id == "trick_coins":
+                        reward_parts.append(f"{amount} Trick Coins")
+                    elif grant_id == "dice_count":
+                        reward_parts.append(f"{amount} Dice")
+                    elif grant_id == "xp_bank":
+                        reward_parts.append(f"{amount} XP Bank")
+                prefix = f"{emoji} " if emoji else ""
+                summary = " | ".join(reward_parts) if reward_parts else "configured bonus"
+                lines.append(f"{prefix}**{label}**: {summary}")
+            if lines:
+                embed.add_field(name="Cars", value="\n".join(lines), inline=False)
         return embed
 
     def build_observer_announcement_embed(self, color: discord.Color, starts_at: datetime) -> discord.Embed:

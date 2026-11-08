@@ -94,6 +94,10 @@ class PublicEventsCog(commands.Cog):
         self._chat_candy_guild_locks: dict[int, asyncio.Lock] = {}
         self._chat_candy_expire_tasks: dict[int, asyncio.Task] = {}
         self._chat_candy_restored = False
+        # guild_id -> {"messages": {(channel_id, message_id)}, "started": bool}
+        self._candy_announcements: dict[int, dict] = {}
+        self._observer_announcements: dict[int, list] = {}
+        self._delayed_deletes: set[asyncio.Task] = set()
         self._last_reward_reconciliation_at: datetime | None = None
 
     async def cog_load(self) -> None:
@@ -124,6 +128,11 @@ class PublicEventsCog(commands.Cog):
         self._chat_candy_expire_tasks.clear()
         self._chat_candy_guild_locks.clear()
         self._manual_start_locks.clear()
+        self._candy_announcements.clear()
+        self._observer_announcements.clear()
+        for task in list(self._delayed_deletes):
+            task.cancel()
+        self._delayed_deletes.clear()
 
     def _load_config(self) -> dict:
         return get_public_events_config()
@@ -406,22 +415,32 @@ class PublicEventsCog(commands.Cog):
                 stored_next_event_name
                 and stored_next_run_at is not None
                 and last_triggered_at != stored_next_run_at.isoformat()
-                and self._is_pending_scheduled_slot_valid(now, stored_next_run_at)
+                and self._is_pending_scheduled_slot_valid(
+                    now,
+                    stored_next_run_at,
+                    lock_minutes=max(1, announce_minutes_before),
+                )
             ):
                 next_event_name = stored_next_event_name
                 next_run_at = stored_next_run_at
             else:
                 next_event_name, next_run_at = self._compute_next_scheduled_event(config, state, now)
+                # So zera o marcador de "ja anunciado" se o horario realmente mudou. Antes ele era
+                # zerado a cada ciclo (e o state local ficava desatualizado), entao com
+                # announce_minutes_before > 1 o aviso era reenviado a cada 10s.
+                same_slot = str(state.get("next_run_at") or "") == next_run_at.isoformat()
+                last_announced = state.get("last_announced_at") if same_slot else None
                 await self.public_events_repo.set_state(
                     guild.id,
                     next_run_at=next_run_at.isoformat(),
                     next_event_name=next_event_name,
                     last_public_event_name=state.get("last_public_event_name"),
-                    last_announced_at=None,
+                    last_announced_at=last_announced,
                     last_triggered_at=state.get("last_triggered_at"),
                 )
                 state["next_event_name"] = next_event_name
                 state["next_run_at"] = next_run_at.isoformat()
+                state["last_announced_at"] = last_announced
 
             if announce_minutes_before > 0:
                 announce_at = next_run_at - timedelta(minutes=announce_minutes_before)
@@ -430,24 +449,32 @@ class PublicEventsCog(commands.Cog):
                         channels = await self._get_event_channels(guild)
                         observer_cfg = config.get("observer", {})
                         role_content = await self._get_notification_role_mention(guild)
+                        sent_announcements = []
                         for channel in channels:
-                            await self._send_observer_payload(
+                            announcement = await self._send_observer_payload(
                                 channel,
                                 observer_cfg,
                                 content=role_content,
                                 embed=self._build_observer_announcement_embed(next_run_at),
+                                wait=True,
                             )
+                            if announcement is not None:
+                                sent_announcements.append(announcement)
+                        await self._cleanup_safe(
+                            self._track_observer_announcements(guild.id, observer_cfg, sent_announcements)
+                        )
                     elif next_event_name == "Julgamento":
                         julgamento_cog = self.bot.get_cog("JulgamentoCog")
                         if julgamento_cog is not None and hasattr(julgamento_cog, "announce_upcoming"):
                             await julgamento_cog.announce_upcoming(guild, next_run_at)
                     elif next_event_name == "Chuva de Doces":
-                        await self._send_event_payload(
+                        sent_messages = await self._send_event_payload(
                             guild,
                             content=await self._get_notification_role_mention(guild),
                             embed=self._build_spider_announcement_embed(next_run_at),
                             view=PublicEventTranslateView(self._build_spider_announcement_embed_en(next_run_at)),
                         )
+                        await self._candy_safe(self._track_candy_messages(guild.id, sent_messages))
                     else:
                         await self._send_event_message(
                             guild,
@@ -708,8 +735,9 @@ class PublicEventsCog(commands.Cog):
             return "Julgamento", next_julgamento_run
         return next_public_event_name, next_public_run
 
-    def _is_pending_scheduled_slot_valid(self, now: datetime, scheduled_at: datetime) -> bool:
-        return scheduled_at - timedelta(minutes=1) <= now <= scheduled_at + timedelta(seconds=15)
+    def _is_pending_scheduled_slot_valid(self, now: datetime, scheduled_at: datetime, lock_minutes: int = 1) -> bool:
+        # O horario fica "travado" a partir de lock_minutes antes (precisa cobrir a janela do aviso).
+        return scheduled_at - timedelta(minutes=max(1, lock_minutes)) <= now <= scheduled_at + timedelta(seconds=15)
 
     async def _has_active_public_runtime(self, guild_id: int) -> bool:
         observer_state = await self.public_events_repo.get_observer_state(guild_id)
@@ -761,13 +789,15 @@ class PublicEventsCog(commands.Cog):
         content: str | None = None,
         embed: discord.Embed | None = None,
         view: discord.ui.View | None = None,
-    ) -> None:
+    ) -> list[discord.Message]:
         channels = await self._get_event_channels(guild)
+        sent: list[discord.Message] = []
         for channel in channels:
             try:
-                await channel.send(content=content, embed=embed, view=view)
+                sent.append(await channel.send(content=content, embed=embed, view=view))
             except discord.HTTPException:
                 continue
+        return sent
 
     async def _send_chat_bonus(
         self,
@@ -783,12 +813,15 @@ class PublicEventsCog(commands.Cog):
         options = list(bonus_cfg.get("options") or [])
         if not options:
             return False
-        locale = "pt-BR"
+        locale = self._chat_bonus_locale(message.channel, bonus_cfg)
+        if locale != "pt-BR":
+            options = [{**option, "label": option.get("label_en") or option.get("label")} for option in options]
         embed = self._build_chat_bonus_embed(
             message_count=message_count,
             threshold=threshold,
             timeout_seconds=timeout_seconds,
             options=options,
+            locale=locale,
         )
 
         for allow_emoji in (True, False):
@@ -962,6 +995,7 @@ class PublicEventsCog(commands.Cog):
                         "id": str(option.get("id") or f"option_{index + 1}"),
                         "label": str(option.get("label") or f"Opcao {index + 1}"),
                         "emoji": str(option.get("emoji") or "").strip() or None,
+                        "label_en": str(option.get("label_en") or "").strip() or None,
                         "rewards": rewards,
                     }
                 )
@@ -980,6 +1014,40 @@ class PublicEventsCog(commands.Cog):
             }
         ] if rewards else []
         return cfg
+
+    def _chat_bonus_locale(self, channel: discord.abc.GuildChannel | discord.Thread, bonus_cfg: dict) -> str:
+        english_ids: set[int] = set()
+        for value in bonus_cfg.get("english_channel_ids") or []:
+            try:
+                english_ids.add(int(value))
+            except (TypeError, ValueError):
+                continue
+        if not english_ids:
+            return "pt-BR"
+        channel_ids = {channel.id}
+        parent_id = getattr(channel, "parent_id", None)
+        if parent_id:
+            channel_ids.add(parent_id)
+        return "en-US" if english_ids & channel_ids else "pt-BR"
+
+    def _chat_candy_locale(self, channel: discord.abc.GuildChannel | discord.Thread) -> str:
+        main = self._load_main_config()
+        raw_ids = (main.get("chat_candy") or {}).get("english_channel_ids")
+        if not raw_ids:
+            raw_ids = (main.get("chat_bonus") or {}).get("english_channel_ids")
+        english_ids: set[int] = set()
+        for value in raw_ids or []:
+            try:
+                english_ids.add(int(value))
+            except (TypeError, ValueError):
+                continue
+        if not english_ids:
+            return "pt-BR"
+        channel_ids = {channel.id}
+        parent_id = getattr(channel, "parent_id", None)
+        if parent_id:
+            channel_ids.add(parent_id)
+        return "en-US" if english_ids & channel_ids else "pt-BR"
 
     def _chat_candy_config(self, config: dict | None = None) -> dict:
         raw = dict((config or self._load_main_config()).get("chat_candy") or {})
@@ -1022,20 +1090,144 @@ class PublicEventsCog(commands.Cog):
         return discord.PartialEmoji(name="doce", id=emoji_id)
 
 
+    # ---- Limpeza das mensagens da Chuva de Doces (aviso + inicio) ----
+
+    async def _cleanup_safe(self, coro) -> None:
+        try:
+            await coro
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            LOGGER.exception("Falha na limpeza de mensagens de evento")
+
+    def _observer_cleanup_settings(self, observer_cfg: dict | None) -> tuple[bool, int]:
+        raw = (observer_cfg or {}).get("cleanup")
+        raw = raw if isinstance(raw, dict) else {}
+        delete_announcement = bool(raw.get("delete_announcement_after_end", True))
+        try:
+            result_seconds = max(0, int(raw.get("delete_result_after_seconds", 0) or 0))
+        except (TypeError, ValueError):
+            result_seconds = 0
+        return delete_announcement, result_seconds
+
+    async def _delete_messages_quietly(self, messages) -> None:
+        for message in messages:
+            try:
+                await message.delete()
+            except discord.HTTPException:
+                continue
+
+    def _schedule_message_delete(self, message, delay_seconds: float) -> None:
+        async def _runner() -> None:
+            await asyncio.sleep(delay_seconds)
+            try:
+                await message.delete()
+            except discord.HTTPException:
+                pass
+
+        task = asyncio.create_task(_runner())
+        self._delayed_deletes.add(task)
+        task.add_done_callback(self._delayed_deletes.discard)
+
+    async def _track_observer_announcements(self, guild_id: int, observer_cfg: dict, messages: list) -> None:
+        delete_announcement, _ = self._observer_cleanup_settings(observer_cfg)
+        if not delete_announcement or not messages:
+            return
+        leftover = self._observer_announcements.pop(guild_id, None)
+        if leftover:
+            await self._delete_messages_quietly(leftover)
+        self._observer_announcements[guild_id] = list(messages)
+
+    async def _finish_observer_cleanup(self, guild_id: int, observer_cfg: dict, result_message) -> None:
+        delete_announcement, result_seconds = self._observer_cleanup_settings(observer_cfg)
+        if delete_announcement:
+            announcements = self._observer_announcements.pop(guild_id, None)
+            if announcements:
+                await self._delete_messages_quietly(announcements)
+        if result_message is not None and result_seconds > 0:
+            self._schedule_message_delete(result_message, result_seconds)
+
+    async def _candy_safe(self, coro) -> None:
+        try:
+            await coro
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            LOGGER.exception("Falha na limpeza das mensagens da Chuva de Doces")
+
+    def _candy_cleanup_enabled(self) -> bool:
+        return bool(self._spider_config().get("delete_messages_after_end", True))
+
+    async def _delete_candy_messages(self, refs) -> None:
+        for channel_id, message_id in list(refs):
+            try:
+                channel = self.bot.get_partial_messageable(channel_id)
+                await channel.get_partial_message(message_id).delete()
+            except discord.HTTPException:
+                continue
+
+    async def _track_candy_messages(self, guild_id: int, messages: list[discord.Message] | None) -> None:
+        if not messages or not self._candy_cleanup_enabled():
+            return
+        leftover = self._candy_announcements.pop(guild_id, None)
+        if leftover:
+            await self._delete_candy_messages(leftover["messages"])
+        self._candy_announcements[guild_id] = {
+            "messages": {(m.channel.id, m.id) for m in messages},
+            "started": False,
+        }
+
+    async def _capture_candy_start_messages(self, guild: discord.Guild, since: datetime) -> None:
+        if not self._candy_cleanup_enabled():
+            return
+        expected_title = self._build_spider_start_embed(discord.utils.utcnow()).title
+        entry = self._candy_announcements.setdefault(guild.id, {"messages": set(), "started": False})
+        entry["started"] = True
+        if not expected_title:
+            return
+        bot_id = self.bot.user.id if self.bot.user else None
+        for channel in await self._get_event_channels(guild):
+            try:
+                async for message in channel.history(after=since, limit=20):
+                    if message.author.id != bot_id:
+                        continue
+                    if any(embed.title == expected_title for embed in message.embeds):
+                        entry["messages"].add((channel.id, message.id))
+            except discord.HTTPException:
+                continue
+
+    async def _cleanup_candy_messages(self, guild_id: int) -> None:
+        entry = self._candy_announcements.get(guild_id)
+        if not entry or not entry["started"]:
+            return
+        spider_state = await self.public_events_repo.get_spider_state(guild_id)
+        if spider_state.get("active"):
+            return
+        entry = self._candy_announcements.pop(guild_id, None)
+        if entry:
+            await self._delete_candy_messages(entry["messages"])
+
     async def _start_spider_infestation(self, guild: discord.Guild, config: dict | None = None) -> tuple[bool, str]:
-        return await self.public_event_runtime.start_spider_infestation(self, guild, config)
+        began_at = discord.utils.utcnow() - timedelta(seconds=5)
+        result = await self.public_event_runtime.start_spider_infestation(self, guild, config)
+        if result[0]:
+            await self._candy_safe(self._capture_candy_start_messages(guild, began_at))
+        return result
 
     def _schedule_spider_finish(self, guild_id: int, ends_at: datetime) -> None:
         self.public_event_runtime.schedule_spider_finish(self, guild_id, ends_at)
 
     async def _finish_spider_after_delay(self, guild_id: int, ends_at: datetime) -> None:
         await self.public_event_runtime.finish_spider_after_delay(self, guild_id, ends_at)
+        await self._candy_safe(self._cleanup_candy_messages(guild_id))
 
     async def _finish_spider_if_expired(self, guild: discord.Guild) -> None:
         await self.public_event_runtime.finish_spider_if_expired(self, guild)
+        await self._candy_safe(self._cleanup_candy_messages(guild.id))
 
     async def _finish_spider_infestation(self, guild: discord.Guild, *, cancelled: bool = False) -> None:
         await self.public_event_runtime.finish_spider_infestation(self, guild, cancelled=cancelled)
+        await self._candy_safe(self._cleanup_candy_messages(guild.id))
 
     async def _maybe_spawn_spider(self, message: discord.Message) -> None:
         await self.public_event_runtime.maybe_spawn_spider(self, message)
@@ -1495,19 +1687,34 @@ class PublicEventsCog(commands.Cog):
             return None, None
 
     def _resolve_observer_revealed_image_path(self, question: dict | None) -> Path | None:
-        if not question or self.observer_catalog.kind(question) != "chat_quote":
+        if not question:
             return None
-        archives_cfg = self._observer_archives_config()
-        return self.observer_archive_service.resolve_cached_image(
-            str(question.get("revealed_image_path") or ""),
-            str(archives_cfg.get("cache_directory") or "cache/observer_archives"),
-        )
+        if self.observer_catalog.kind(question) == "chat_quote":
+            archives_cfg = self._observer_archives_config()
+            return self.observer_archive_service.resolve_cached_image(
+                str(question.get("revealed_image_path") or ""),
+                str(archives_cfg.get("cache_directory") or "cache/observer_archives"),
+            )
+        # Perguntas de imagem (ex.: "qual e o filme"): a pergunta usa `image_path` (borrada)
+        # e o acerto mostra `revealed_image_path` (imagem limpa). Reaproveita o mesmo
+        # resolvedor de caminho do catalogo, so trocando o campo.
+        revealed = str(question.get("revealed_image_path") or "").strip()
+        if not revealed:
+            return None
+        return self.observer_catalog.image_path({**question, "image_path": revealed})
 
     def _resolve_observer_revealed_attachment_filename(self, question: dict | None) -> str | None:
-        if not question or self.observer_catalog.kind(question) != "chat_quote":
+        if not question:
             return None
-        public_id = str(question.get("archive_public_id") or "archive")
-        return f"observer_{public_id}_revealed.png"
+        if self.observer_catalog.kind(question) == "chat_quote":
+            public_id = str(question.get("archive_public_id") or "archive")
+            return f"observer_{public_id}_revealed.png"
+        revealed = str(question.get("revealed_image_path") or "").strip()
+        if not revealed:
+            return None
+        # nome neutro: nao pode conter o titulo do filme
+        suffix = Path(revealed).suffix or ".png"
+        return f"observer_{question.get('id') or 'movie'}_revealed{suffix}"
 
     def _expand_observer_answers(self, question: dict) -> list[str]:
         answers = [str(answer).strip() for answer in question.get("answers", []) if str(answer).strip()]
@@ -1711,6 +1918,7 @@ class PublicEventsCog(commands.Cog):
         threshold: int,
         timeout_seconds: int,
         options: list[dict],
+        locale: str = "pt-BR",
     ) -> discord.Embed:
         return self.texts.build_chat_bonus_embed(
             discord.Color.from_rgb(115, 82, 168),
@@ -1718,6 +1926,7 @@ class PublicEventsCog(commands.Cog):
             threshold=threshold,
             timeout_seconds=timeout_seconds,
             options=options,
+            locale=locale,
         )
 
     def _build_observer_question_panel(

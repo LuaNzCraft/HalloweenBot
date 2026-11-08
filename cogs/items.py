@@ -6,8 +6,10 @@ from discord.ext import commands, tasks
 
 from repositories.admin_repo import AdminRepo
 from repositories.effects_repo import EffectsRepo
+from repositories.guild_metrics_repo import GuildMetricsRepo
 from repositories.julgamento_repo import JulgamentoRepo
 from repositories.public_events_repo import PublicEventsRepo
+from repositories.user_guild_metrics_repo import UserGuildMetricsRepo
 from services.audit_service import AuditService
 from services.inventory_service import InventoryService
 from services.i18n_service import I18nService
@@ -39,7 +41,12 @@ class ItemsCog(commands.Cog):
         self.public_events_repo = PublicEventsRepo()
         self.julgamento_repo = JulgamentoRepo()
         self.audit_service = AuditService(bot)
-        self.inventory_service = InventoryService(item_catalog=self.catalog, i18n_service=self.i18n)
+        self.inventory_service = InventoryService(
+            item_catalog=self.catalog,
+            guild_metrics_repo=GuildMetricsRepo(),
+            user_guild_metrics_repo=UserGuildMetricsRepo(),
+            i18n_service=self.i18n,
+        )
         self.profile_service = ProfileService(item_catalog=self.catalog, i18n_service=self.i18n)
         self.mission_service = MissionService(
             users_repo=self.inventory_service.users_repo,
@@ -186,6 +193,7 @@ class ItemsCog(commands.Cog):
             interaction.user.id,
             normalized_item_id,
             target_id=alvo.id if alvo else None,
+            guild_id=interaction.guild.id if interaction.guild else None,
         )
         await interaction.followup.send(result.message, ephemeral=not result.public)
 

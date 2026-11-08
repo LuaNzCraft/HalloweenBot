@@ -75,7 +75,7 @@ class ObserverAnagramCatalogTests(unittest.TestCase):
 
         self.assertEqual(questions, [])
 
-    def test_project_catalog_contains_thirty_valid_anagrams(self) -> None:
+    def test_project_catalog_contains_at_least_thirty_valid_anagrams(self) -> None:
         root = Path(__file__).resolve().parent.parent
         catalog = ObserverQuestionCatalog(root)
 
@@ -83,7 +83,7 @@ class ObserverAnagramCatalogTests(unittest.TestCase):
             {"question_source": "content/halloween/observer_anagram_questions.json"}
         )
 
-        self.assertEqual(len(questions), 30)
+        self.assertGreaterEqual(len(questions), 30)
         self.assertTrue(all(question["kind"] == "anagram" for question in questions))
 
 

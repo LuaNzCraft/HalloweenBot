@@ -189,6 +189,9 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
         }
         self.revealed_path = Path("cache/observer_archives/10/revealed.png")
 
+    async def _cleanup_safe(self, coro) -> None:
+        await coro
+
     async def test_winner_response_publishes_the_revealed_card(self) -> None:
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
         state = {
@@ -232,6 +235,8 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             _resolve_observer_revealed_image_path=lambda _question: self.revealed_path,
             _resolve_observer_revealed_attachment_filename=lambda _question: "revealed.png",
             _send_observer_payload=AsyncMock(),
+            _cleanup_safe=AsyncMock(side_effect=self._cleanup_safe),
+            _finish_observer_cleanup=AsyncMock(),
         )
         runtime = PublicEventRuntimeService()
         runtime.settle_observer_reward = AsyncMock(return_value=["10 doces"])
@@ -284,6 +289,8 @@ class ObserverArchiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             _resolve_observer_revealed_attachment_filename=lambda _question: "revealed.png",
             _build_observer_timeout_panel=MagicMock(return_value=timeout_panel),
             _send_observer_payload=AsyncMock(),
+            _cleanup_safe=AsyncMock(side_effect=self._cleanup_safe),
+            _finish_observer_cleanup=AsyncMock(),
         )
 
         await PublicEventRuntimeService().finish_observer_if_unanswered(cog, 10, expires_at)

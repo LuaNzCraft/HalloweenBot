@@ -52,7 +52,13 @@ class InventoryService:
             raise ValueError("unknown_item")
         return await self.users_repo.add_inventory_item(user_id, item_id, quantity)
 
-    async def use_item(self, user_id: int, item_id: str, target_id: int | None = None) -> UseItemResult:
+    async def use_item(
+        self,
+        user_id: int,
+        item_id: str,
+        target_id: int | None = None,
+        guild_id: int | None = None,
+    ) -> UseItemResult:
         locale = await self.i18n.get_user_locale(user_id)
         item = self.item_catalog.get(item_id)
         if item is None:
@@ -76,11 +82,17 @@ class InventoryService:
         if item.kind == "consumable":
             await self.users_repo.remove_inventory_item(user_id, item_id, 1)
 
-        return await self._apply_item(user_id, item, locale)
+        return await self._apply_item(user_id, item, locale, guild_id)
 
-    async def _apply_item(self, user_id: int, item: ItemDefinition, locale: str) -> UseItemResult:
+    async def _apply_item(
+        self,
+        user_id: int,
+        item: ItemDefinition,
+        locale: str,
+        guild_id: int | None = None,
+    ) -> UseItemResult:
         if item.id in {"cesta_abobora", "cesta_doce_epica", "cesta_doce_amaldicoada"}:
-            result = await self.open_pumpkin_baskets(user_id, 1)
+            result = await self.open_pumpkin_baskets(user_id, 1, guild_id=guild_id)
             if not result.ok:
                 return UseItemResult(False, False, result.message)
             reward_message = result.message.removeprefix("- ").strip()

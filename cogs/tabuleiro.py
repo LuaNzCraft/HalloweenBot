@@ -194,8 +194,7 @@ BASKET_ITEM_IDS = {"cesta_abobora", "cesta_doce_epica", "cesta_doce_amaldicoada"
 
 
 def resolve_board_asset(relative_path: str) -> Path:
-    normalized = relative_path.replace("/", "\\")
-    return ASSETS_DIR / normalized
+    return ASSETS_DIR / relative_path
 def resolve_existing_path(candidates: Tuple[Path, ...]) -> Path:
     for candidate in candidates:
         if candidate.exists():

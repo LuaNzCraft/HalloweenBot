@@ -6,6 +6,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from repositories.guild_metrics_repo import GuildMetricsRepo
+from repositories.user_guild_metrics_repo import UserGuildMetricsRepo
 from services.inventory_service import InventoryService
 from services.profile_service import ProfileService
 from views.basket_panel import BasketPanelData, BasketPanelView
@@ -29,6 +31,8 @@ class BasketsCog(commands.Cog):
         self.inventory_service = InventoryService(
             users_repo=bootstrap_inventory.users_repo,
             item_catalog=bootstrap_inventory.item_catalog,
+            guild_metrics_repo=GuildMetricsRepo(),
+            user_guild_metrics_repo=UserGuildMetricsRepo(),
             i18n_service=bootstrap_inventory.i18n,
         )
         self.i18n = self.inventory_service.i18n

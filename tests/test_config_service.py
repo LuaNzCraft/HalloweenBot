@@ -54,14 +54,9 @@ class ConfigServiceTests(unittest.TestCase):
             self.service.reload()
 
     def test_nan_is_rejected(self) -> None:
-        self.path.write_text(
-            CONFIG_PATH.read_text(encoding="utf-8").replace(
-                "spawn_chance_percent: 60",
-                "spawn_chance_percent: .nan",
-                1,
-            ),
-            encoding="utf-8",
-        )
+        invalid = deepcopy(self.valid_config)
+        invalid["chat_candy"]["spawn_chance_percent"] = float("nan")
+        self._write(invalid)
 
         with self.assertRaisesRegex(ConfigError, "NaN e infinito"):
             self.service.reload()
@@ -138,9 +133,9 @@ class ConfigServiceTests(unittest.TestCase):
             self.service.reload()
 
     def test_yaml_aliases_are_rejected(self) -> None:
-        text = CONFIG_PATH.read_text(encoding="utf-8").replace(
-            "event_channel_ids: []",
-            "event_channel_ids: &shared_channels []",
+        text = yaml.safe_dump(self.valid_config, allow_unicode=True, sort_keys=False).replace(
+            "  event_channel_ids:",
+            "  event_channel_ids: &shared_channels",
             1,
         )
         self.path.write_text(text + "\nalias_copy: *shared_channels\n", encoding="utf-8")

@@ -59,6 +59,7 @@ class ChatCandyRuntimeService:
                 reward_candies=config["reward_candies"],
                 expires_at=expires_at,
                 option_count=option_count,
+                **self._locale_kwargs(cog, message.channel),
             )
 
             try:
@@ -185,19 +186,24 @@ class ChatCandyRuntimeService:
     ) -> None:
         winner_user_id = int(spawn["winner_user_id"])
         winner = f"<@{winner_user_id}>"
+        message = await self._fetch_message(cog, int(spawn["channel_id"]), int(spawn["message_id"]))
+        if message is None:
+            return
         embed = cog.texts.build_chat_candy_winner_embed(
             discord.Color.from_rgb(115, 82, 168),
             winner_mention=winner,
             reward_summary=reward_summary,
+            **self._locale_kwargs(cog, message.channel),
         )
-        message = await self._fetch_message(cog, int(spawn["channel_id"]), int(spawn["message_id"]))
-        if message is None:
-            return
+        edited = True
         try:
             await message.edit(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         except (discord.Forbidden, discord.HTTPException):
-            pass
+            edited = False
         await self._safe_clear_reactions(message)
+        delay = float(cog._chat_candy_config().get("delete_winner_after_seconds", 0) or 0)
+        if edited and delay > 0:
+            cog._schedule_message_delete(message, delay)
 
     async def restore_expiry_tasks(self, cog: "PublicEventsCog") -> None:
         await self.reconcile_pending_rewards(cog)
@@ -234,7 +240,10 @@ class ChatCandyRuntimeService:
         if message is not None:
             try:
                 await message.edit(
-                    embed=cog.texts.build_chat_candy_cancelled_embed(discord.Color.from_rgb(70, 70, 80)),
+                    embed=cog.texts.build_chat_candy_cancelled_embed(
+                        discord.Color.from_rgb(70, 70, 80),
+                        **self._locale_kwargs(cog, message.channel),
+                    ),
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
             except (discord.Forbidden, discord.HTTPException):
@@ -284,12 +293,19 @@ class ChatCandyRuntimeService:
             message = await self._fetch_message(cog, channel_id, message_id)
             if message is None:
                 return
-            embed = cog.texts.build_chat_candy_timeout_embed(discord.Color.from_rgb(70, 70, 80))
+            embed = cog.texts.build_chat_candy_timeout_embed(
+                discord.Color.from_rgb(70, 70, 80),
+                **self._locale_kwargs(cog, message.channel),
+            )
+            edited = True
             try:
                 await message.edit(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             except (discord.Forbidden, discord.HTTPException):
-                pass
+                edited = False
             await self._safe_clear_reactions(message)
+            delay = float(cog._chat_candy_config().get("delete_timeout_after_seconds", 0) or 0)
+            if edited and delay > 0:
+                cog._schedule_message_delete(message, delay)
         except asyncio.CancelledError:
             raise
         finally:
@@ -314,6 +330,13 @@ class ChatCandyRuntimeService:
             return await channel.fetch_message(message_id)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             return None
+
+    @staticmethod
+    def _locale_kwargs(cog: "PublicEventsCog", channel: Any) -> dict[str, str]:
+        # So passa locale quando nao e pt-BR, para o caminho em portugues ficar identico ao de antes.
+        resolver = getattr(cog, "_chat_candy_locale", None)
+        locale = resolver(channel) if callable(resolver) else "pt-BR"
+        return {"locale": locale} if isinstance(locale, str) and locale != "pt-BR" else {}
 
     async def _safe_clear_reactions(self, message: discord.Message) -> None:
         try:
@@ -369,6 +392,12 @@ class ChatCandyRuntimeService:
                 raw.get("max_spawns_per_day"), 150, minimum=0, maximum=1_000_000
             ),
             "pause_during_public_events": bool(raw.get("pause_during_public_events", True)),
+            "delete_winner_after_seconds": ChatCandyRuntimeService._safe_float(
+                raw.get("delete_winner_after_seconds"), 8.0, minimum=0.0, maximum=3600.0
+            ),
+            "delete_timeout_after_seconds": ChatCandyRuntimeService._safe_float(
+                raw.get("delete_timeout_after_seconds"), 0.0, minimum=0.0, maximum=3600.0
+            ),
         }
 
     @staticmethod

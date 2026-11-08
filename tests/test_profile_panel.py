@@ -164,6 +164,7 @@ class ProfilePanelTests(unittest.IsolatedAsyncioTestCase):
         request_cog = SimpleNamespace(
             i18n=self.i18n,
             profile_requests_repo=request_repo,
+            _is_bot_target=lambda _user_id: False,
         )
         public_panel = PublicProfileView(
             request_cog,
@@ -204,6 +205,7 @@ class ProfilePanelTests(unittest.IsolatedAsyncioTestCase):
         request_cog = SimpleNamespace(
             i18n=self.i18n,
             profile_requests_repo=request_repo,
+            _is_bot_target=lambda _user_id: False,
             profile_requests_config={
                 "request_timeout_seconds": 1800,
                 "daily_requests_per_pair": 1,

@@ -164,17 +164,20 @@ class PublicEventRuntimeService:
                 answer_value=answer_value,
                 attachment_filename=revealed_filename,
             )
+            result_message = None
             if isinstance(channel, (discord.TextChannel, discord.Thread)):
                 try:
-                    await cog._send_observer_payload(
+                    result_message = await cog._send_observer_payload(
                         channel,
                         observer_cfg,
                         view=timeout_panel,
                         attachment_path=revealed_path,
                         attachment_filename=revealed_filename,
+                        wait=True,
                     )
                 except discord.HTTPException:
                     pass
+            await cog._cleanup_safe(cog._finish_observer_cleanup(guild_id, observer_cfg, result_message))
             await cog.public_events_repo.set_observer_state(
                 guild_id,
                 active=False,
@@ -235,6 +238,7 @@ class PublicEventRuntimeService:
                     message.author.id,
                 )
                 summary = "Recompensa pendente de verificacao."
+            result_message = None
             try:
                 question = await cog._find_observer_question_for_state(
                     message.guild.id,
@@ -253,12 +257,13 @@ class PublicEventRuntimeService:
                     answer_value=answer_value,
                     attachment_filename=revealed_filename,
                 )
-                await cog._send_observer_payload(
+                result_message = await cog._send_observer_payload(
                     message.channel,
                     config,
                     view=winner_panel,
                     attachment_path=revealed_path,
                     attachment_filename=revealed_filename,
+                    wait=True,
                 )
             except Exception:
                 LOGGER.exception(
@@ -266,6 +271,7 @@ class PublicEventRuntimeService:
                     message.guild.id,
                     message.author.id,
                 )
+            await cog._cleanup_safe(cog._finish_observer_cleanup(message.guild.id, config, result_message))
         finally:
             cog._resolving_observer_guilds.discard(message.guild.id)
 
@@ -568,9 +574,15 @@ class PublicEventRuntimeService:
         if cog.bot.user is not None and payload.user_id == cog.bot.user.id:
             return
         spider_cfg = cog._spider_config()
-        emoji_id = cog._spider_emoji_id(spider_cfg)
-        if emoji_id > 0 and payload.emoji.id != emoji_id:
-            return
+        # O emoji vem do que a pessoa clicou (o doce guarda o proprio emoji);
+        # sortear de novo aqui descartava ~(N-1)/N das capturas com N emojis.
+        configured_ids = cog._spider_emoji_ids(spider_cfg)
+        if configured_ids:
+            if payload.emoji.id not in configured_ids:
+                return
+            emoji_id = int(payload.emoji.id)
+        else:
+            emoji_id = 0
         if emoji_id <= 0 and str(payload.emoji.name) != "ðŸ•·ï¸":
             return
 
