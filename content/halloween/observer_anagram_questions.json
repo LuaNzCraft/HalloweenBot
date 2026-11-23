@@ -238,5 +238,53 @@
     "question": "O sinal esconde o nome completo da assassina do primeiro Sexta-Feira 13.",
     "question_en": "The signal hides the full name of the killer from the first Friday the 13th.",
     "answers": ["pamela voorhees", "pamela"]
+  },
+  {
+    "id": "observer_anagram_031",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde a mente brilhante que buscou a paz através do controle absoluto, corrompendo seu próprio legado corporativo.",
+    "question_en": "The signal hides the brilliant mind that sought peace through absolute control, corrupting its own corporate legacy.",
+    "answers": ["tony stark", "tony"]
+  },
+  {
+    "id": "observer_anagram_032",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde a alma marcada pela solidão precoce que quebrou o ciclo do ódio ao carregar o peso de sua própria aldeia.",
+    "question_en": "The signal hides the soul marked by early loneliness who broke the cycle of hatred by carrying the burden of his own village.",
+    "answers": ["naruto uzumaki", "naruto"]
+  },
+  {
+    "id": "observer_anagram_033",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o guerreiro de origem esquecida cuja única ambição verdadeira é testar os limites do próprio corpo.",
+    "question_en": "The signal hides the warrior of forgotten origin whose true ambition is to test the limits of his own body.",
+    "answers": ["goku", "son goku"]
+  },
+  {
+    "id": "observer_anagram_034",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde a figura trágica que trocou promessas de salvação pelas correntes do poder absoluto.",
+    "question_en": "The signal hides the tragic figure who traded promises of salvation for the chains of absolute power.",
+    "answers": ["anakin skywalker", "darth vader", "anakin"]
+  },
+  {
+    "id": "observer_anagram_035",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o herdeiro relutante que cresceu nas sombras do esquecimento antes de herdar o fardo de uma guerra invisível.",
+    "question_en": "The signal hides the reluctant heir who grew up in the shadows of oblivion before inheriting the burden of an invisible war.",
+    "answers": ["harry potter", "harry"]
+  },
+  {
+    "id": "observer_anagram_036",
+    "kind": "anagram",
+    "difficulty": "hard",
+    "question": "O sinal esconde o jovem comum que aprendeu da forma mais dolorosa que a culpa é o preço inevitável da coragem.",
+    "question_en": "The signal hides the ordinary youth who learned the hard way that guilt is the inevitable price of courage.",
+    "answers": ["peter parker", "peter"]
   }
 ]
