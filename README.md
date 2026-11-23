@@ -125,6 +125,8 @@ Depois de adicionar o bot ao servidor, use os comandos administrativos:
 
 Os IDs definidos por `/setup` são persistidos no SQLite e têm prioridade sobre `guild_defaults`.
 
+O arquivo versionado mantém canais e cargos específicos de servidor vazios. Configure-os pelo `/setup` depois de instalar o bot. Os IDs de emojis em `config/halloween.yml` são referências de exemplo e devem ser substituídos pelos emojis disponíveis na sua comunidade.
+
 ## Configuração operacional
 
 O arquivo `config/halloween.yml` controla economia, tempos, probabilidades, recompensas, pools, eventos, itens e comportamento do tabuleiro.
@@ -187,5 +189,6 @@ Os testes usam bancos SQLite temporários e mocks para Discord; eles não devem 
 - Efeitos temporários e eventos pendentes são reconciliados após reinício.
 - Bots, mensagens privadas e contextos fora da guild são ignorados quando necessário.
 - Tokens, bancos reais e arquivos de fechamento permanecem fora do repositório.
+- Canais, cargos e demais IDs operacionais devem ser configurados em cada servidor, não publicados no código.
 
 Antes de uma publicação real, valide permissões, hierarquia de cargos, intents, canais, emojis e comportamento de rate limit em um servidor de teste.

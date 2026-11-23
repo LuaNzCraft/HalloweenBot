@@ -10,7 +10,7 @@ config_version: 1
 guild_defaults:
   leaderboard_channel_id: null
   log_channel_id: null
-  event_channel_ids: [1221978072782344232, 1348737823586517033]
+  event_channel_ids: []
   julgamento_channel_id: null
   julgamento_thread_id: null
   julgamento_base_message_id: null
@@ -86,7 +86,7 @@ profile_requests:
   ignore_cooldown_seconds: 180
   easter_egg:
     enabled: true
-    role_id: 1558919572290281543
+    role_id: null
     message: "Então você foi travesso e tentou travar o bot? Pena que o Coelho já me contou como consertar isso. Mas, pela sua tentativa, vou te dar esse cargo Travesso."
     message_en: "So you were naughty and tried to crash the bot? Too bad the Rabbit already told me how to fix that. But, for your attempt, I’ll give you this role Travesso."
 # Trem Fantasma: bonus coletivo disparado pelo movimento do chat.
@@ -96,8 +96,7 @@ chat_bonus:
   window_minutes: 10
   min_message_length: 3
   button_timeout_seconds: 30
-  english_channel_ids:
-  - 1348737823586517033
+  english_channel_ids: []
   options:
   - id: candies
     label: Doces
@@ -134,8 +133,7 @@ chat_candy:
   pause_during_public_events: true
   delete_winner_after_seconds: 5    # 0 = não apaga
   delete_timeout_after_seconds: 5    # a mensagem de "ninguém pegou"; 0 = mantém
-  english_channel_ids:
-  - 1348737823586517033
+  english_channel_ids: []
 # Tabuleiro, casas, imagens e recompensas.
 board:
   total_tiles: 16

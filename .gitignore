@@ -6,9 +6,15 @@
 # Dados operacionais e backups
 data/*.sqlite3
 data/*.sqlite3-*
+data/*.sqlite3.*
 data/*.db
 data/backups/
 data/closures/
+
+# Copias locais e arquivos de recuperacao
+*.bak
+*.save
+*.orig
 
 # Artefatos Python
 __pycache__/
