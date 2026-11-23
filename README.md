@@ -13,7 +13,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Missões pessoais, globais e de evento em um painel Components V2 com resumo e abas.
 - Perfil em Components V2, leaderboard e sistema de Doce ou Travessura entre jogadores.
 - Guia `/help` em Components V2, com categorias e navegação compacta.
-- Observador em Components V2, com cards visuais para anagramas, imagens de filmes e mensagens arquivadas.
+- Observador em Components V2, com cards para anagramas, imagens fornecidas pelo operador e mensagens arquivadas.
 - Eventos públicos como Sinais Corrompidos, Arquivos do Observador, Chuva de Doces, Trem Fantasma e Caça aos Doces.
 - Carrossel competitivo com inscrições, espectadores, rodadas e premiação.
 - Efeitos temporários com expiração, persistência e recuperação após reinício.
@@ -26,7 +26,7 @@ O projeto combina eventos públicos, missões, moedas, itens, tabuleiro e disput
 - Um bot criado no Discord Developer Portal.
 - Intents `Server Members` e `Message Content` habilitadas no portal.
 
-As dependências principais são `discord.py`, `aiosqlite`, `PyYAML` e `Pillow`.
+As dependências principais são `discord.py`, `aiosqlite`, `PyYAML`, `Pillow` e `NumPy`.
 
 ## Instalação
 
@@ -51,6 +51,68 @@ Inicie o bot:
 ```powershell
 python main.py
 ```
+
+## Criando cards de imagem
+
+O repositório inclui `tools/movie_frame_tool.py`, um editor gráfico para criar perguntas visuais do Observador. Ele reenquadra uma imagem em 1000×1000, aplica efeitos como blur, VHS, visão noturna e found footage, gera uma versão revelada opcional e pode atualizar o catálogo automaticamente.
+
+O projeto não distribui cenas de filmes, capas ou outras imagens de terceiros. Use somente material próprio, licenciado, em domínio público ou que você tenha autorização para utilizar. Aplicar blur ou outros efeitos não transfere os direitos da imagem original.
+
+### Iniciando a ferramenta
+
+Instale as dependências normalmente pelo `requirements.txt` e execute o programa a partir da raiz do projeto:
+
+```powershell
+python tools/movie_frame_tool.py
+```
+
+Também é possível abrir uma imagem diretamente:
+
+```powershell
+python tools/movie_frame_tool.py "C:\caminho\para\imagem.png"
+```
+
+O Python oficial para Windows normalmente já inclui o Tkinter. Em distribuições Linux, instale o pacote `python3-tk` se o módulo `tkinter` não estiver disponível.
+
+### Fluxo recomendado
+
+1. Abra uma imagem com **Abrir** ou cole uma captura com `Ctrl+V`.
+2. Arraste para reposicionar e use a roda do mouse para controlar o zoom.
+3. Escolha **Preencher** ou **Imagem inteira** e aplique um preset. Para esconder a resposta, o preset **Pergunta borrada** é um bom ponto de partida.
+4. Informe o filme ou tema, respostas alternativas separadas por `;` e a dificuldade.
+5. Mantenha **Adicionar ao JSON de perguntas** marcado para registrar a pergunta no catálogo.
+6. Marque **Salvar também a versão revelada** para mostrar a imagem limpa depois do acerto.
+7. Salve com o botão da interface ou `Ctrl+S`.
+
+Executada da raiz, a ferramenta usa por padrão:
+
+```text
+Assets/Observador/Movies/                         imagens geradas
+content/halloween/observer_movie_questions.json  catálogo de perguntas
+content/halloween/horror_movies.json              sugestões de respostas
+```
+
+Cada salvamento pode gerar:
+
+```text
+movie_001.png
+movie_001_revealed.png
+```
+
+E uma entrada correspondente no catálogo com `image_path`, `revealed_image_path`, dificuldade e respostas aceitas. O bot aceita PNG, JPG, JPEG ou WebP dentro de `Assets/Observador/Movies`, com até 8 MB por arquivo.
+
+As imagens dessa pasta são ignoradas pelo Git de propósito. Elas precisam ser copiadas separadamente para o mesmo caminho no ambiente onde o bot será executado. Se você decidir versionar assets próprios ou devidamente licenciados em um fork, ajuste o `.gitignore` conscientemente.
+
+### Atalhos
+
+| Atalho | Ação |
+|---|---|
+| `Ctrl+V` | Colar imagem da área de transferência |
+| `Ctrl+O` | Abrir uma imagem |
+| `Ctrl+S` | Salvar imagem e, se habilitado, atualizar o catálogo |
+| Arrastar com botão esquerdo | Reposicionar enquadramento |
+| Roda do mouse | Ajustar zoom |
+| Botão direito ou `Shift` + arrastar | Mover o centro do efeito de luz |
 
 ## Configuração no Discord
 
@@ -94,6 +156,7 @@ utils/         Utilitários compartilhados
 config/        Configuração operacional central
 content/       Perguntas, missões e traduções
 Assets/        Recursos visuais de origem
+tools/         Ferramentas opcionais para criação de conteúdo
 tests/         Testes unitários e de regressão
 ```
 

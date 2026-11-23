@@ -28,6 +28,9 @@ env/
 # Artefatos derivados do projeto
 cache/
 generated_assets/
+Assets/Observador/Movies/*
+!Assets/Observador/Movies/.gitkeep
+tools/movie_frame_tool.config.json
 
 # Documentacao e notas internas
 *.md
